@@ -60,6 +60,8 @@ def wer(reference: str, hypothesis: str, *, normalize: bool = False, **options: 
     alignment = process_words(reference, hypothesis)
     num_reference_words = len(_split_words(reference))
     if num_reference_words == 0:
+        if hypothesis.strip():
+            raise ValueError("cannot score a hypothesis against an empty reference")
         return 0.0
     return alignment.distance / num_reference_words
 
@@ -83,5 +85,7 @@ def cer(reference: str, hypothesis: str, *, normalize: bool = False, **options: 
     alignment = process_characters(reference, hypothesis)
     num_reference_chars = len(_split_chars(reference))
     if num_reference_chars == 0:
+        if hypothesis.strip():
+            raise ValueError("cannot score a hypothesis against an empty reference")
         return 0.0
     return alignment.distance / num_reference_chars
