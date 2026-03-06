@@ -34,9 +34,7 @@ class Alignment:
         return self.substitutions + self.insertions + self.deletions
 
 
-def align_sequences(
-    reference: Sequence[Hashable], hypothesis: Sequence[Hashable]
-) -> Alignment:
+def align_sequences(reference: Sequence[Hashable], hypothesis: Sequence[Hashable]) -> Alignment:
     """Align ``hypothesis`` against ``reference`` and count edit operations.
 
     Args:
@@ -52,9 +50,7 @@ def align_sequences(
 
     # table[i][j] holds (substitutions, insertions, deletions) for aligning
     # reference[:i] with hypothesis[:j].
-    table: list[list[tuple[int, int, int]]] = [
-        [(0, 0, 0)] * (m + 1) for _ in range(n + 1)
-    ]
+    table: list[list[tuple[int, int, int]]] = [[(0, 0, 0)] * (m + 1) for _ in range(n + 1)]
     for i in range(1, n + 1):
         table[i][0] = (0, 0, i)  # i deletions
     for j in range(1, m + 1):
