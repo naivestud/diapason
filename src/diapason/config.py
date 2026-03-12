@@ -112,9 +112,9 @@ def _build_suite(raw: dict[str, Any]) -> SuiteConfig:
 
 def _build_task(raw: dict[str, Any]) -> TaskConfig:
     return TaskConfig(
-        name=str(raw["name"]),
-        type=str(raw["type"]),
-        manifest=str(raw["manifest"]),
+        name=str(raw.get("name", "")),
+        type=str(raw.get("type", "")),
+        manifest=str(raw.get("manifest", "")),
         adapter=str(raw.get("adapter", "dummy")),
         adapter_options=dict(raw.get("adapter_options", {})),
         metrics=tuple(raw.get("metrics", [])),
