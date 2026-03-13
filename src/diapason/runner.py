@@ -90,16 +90,23 @@ def run_task(task: TaskConfig, base_dir: Path | None = None) -> TaskResult:
     metric_fns = {name: metrics.get(name) for name in task.metrics}
 
     example_results: list[ExampleResult] = []
+    num_errors = 0
     for example in examples:
-        reference, prediction = _reference_and_prediction(example, task, adapter)
-        scores = {
-            metric_name: fn(reference, prediction, **task.metric_options)
-            for metric_name, fn in metric_fns.items()
-        }
-        example_results.append(ExampleResult(example_id=example.id, scores=scores))
+        try:
+            reference, prediction = _reference_and_prediction(example, task, adapter)
+            scores = {
+                metric_name: fn(reference, prediction, **task.metric_options)
+                for metric_name, fn in metric_fns.items()
+            }
+            example_results.append(ExampleResult(example_id=example.id, scores=scores))
+        except Exception as exc:  # noqa: BLE001 - one bad example must not abort the task
+            num_errors += 1
+            example_results.append(ExampleResult(example_id=example.id, error=str(exc)))
 
     aggregated = {
-        metric_name: aggregate_examples([result.scores[metric_name] for result in example_results])
+        metric_name: aggregate_examples(
+            [result.scores[metric_name] for result in example_results if result.error is None]
+        )
         for metric_name in metric_fns
     }
     return TaskResult(
@@ -107,7 +114,7 @@ def run_task(task: TaskConfig, base_dir: Path | None = None) -> TaskResult:
         type=task.type,
         scores=aggregated,
         num_examples=len(example_results),
-        num_errors=0,
+        num_errors=num_errors,
         example_results=tuple(example_results),
     )
 
