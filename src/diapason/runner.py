@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import diapason.adapters  # noqa: F401  (registers built-in adapters)
 import diapason.metrics  # noqa: F401  (registers built-in metrics)
@@ -99,7 +99,7 @@ def run_task(task: TaskConfig, base_dir: Path | None = None) -> TaskResult:
                 for metric_name, fn in metric_fns.items()
             }
             example_results.append(ExampleResult(example_id=example.id, scores=scores))
-        except Exception as exc:  # noqa: BLE001 - one bad example must not abort the task
+        except Exception as exc:
             num_errors += 1
             example_results.append(ExampleResult(example_id=example.id, error=str(exc)))
 
@@ -122,7 +122,7 @@ def run_task(task: TaskConfig, base_dir: Path | None = None) -> TaskResult:
 def _build_adapter(task: TaskConfig) -> ModelAdapter:
     """Instantiate the adapter named by the task with its options."""
     factory = adapters.get(task.adapter)
-    return factory(**task.adapter_options)
+    return cast(ModelAdapter, factory(**task.adapter_options))
 
 
 def _reference_and_prediction(
