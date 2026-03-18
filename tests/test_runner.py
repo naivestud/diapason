@@ -61,7 +61,11 @@ def test_sed_task_from_stored_predictions(tmp_path: Path) -> None:
 def test_run_suite_collects_tasks(tmp_path: Path) -> None:
     suite = SuiteConfig(
         name="demo",
-        tasks=(TaskConfig(name="t", type="asr", manifest=str(_asr_manifest(tmp_path)), metrics=("wer",)),),
+        tasks=(
+            TaskConfig(
+                name="t", type="asr", manifest=str(_asr_manifest(tmp_path)), metrics=("wer",)
+            ),
+        ),
     )
     run = run_suite(suite)
     assert run.suite == "demo"

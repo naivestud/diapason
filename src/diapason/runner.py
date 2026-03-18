@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, cast
 
-import diapason.adapters  # noqa: F401  (registers built-in adapters)
+import diapason.adapters
 import diapason.metrics  # noqa: F401  (registers built-in metrics)
 from diapason.adapters.base import ModelAdapter
 from diapason.config import SuiteConfig, TaskConfig
