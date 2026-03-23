@@ -13,7 +13,7 @@ import json
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from jinja2 import Template
 
@@ -77,9 +77,7 @@ def run_result_to_dict(result: RunResult) -> dict[str, Any]:
     }
 
 
-def write_json_report(
-    result: RunResult, path: str | Path, metadata: ReportMetadata
-) -> Path:
+def write_json_report(result: RunResult, path: str | Path, metadata: ReportMetadata) -> Path:
     """Write the run result and metadata as pretty-printed JSON.
 
     Args:
@@ -121,12 +119,10 @@ def render_markdown(result: RunResult, metadata: ReportMetadata) -> str:
                 "summary": summary,
             }
         )
-    return _MARKDOWN_TEMPLATE.render(metadata=metadata, tasks=tasks)
+    return cast(str, _MARKDOWN_TEMPLATE.render(metadata=metadata, tasks=tasks))
 
 
-def write_markdown_report(
-    result: RunResult, path: str | Path, metadata: ReportMetadata
-) -> Path:
+def write_markdown_report(result: RunResult, path: str | Path, metadata: ReportMetadata) -> Path:
     """Render and write a Markdown report, creating parent directories."""
     output_path = Path(path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
