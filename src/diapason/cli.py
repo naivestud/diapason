@@ -7,15 +7,27 @@ suite config, and delegates to :mod:`diapason.runner` and
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
+from typing import Any
 
 import click
 from rich.console import Console
 from rich.table import Table
 
+import diapason.adapters  # noqa: F401  (registers built-in adapters)
+import diapason.metrics  # noqa: F401  (registers built-in metrics)
 from diapason.config import load_suite
-from diapason.report import build_metadata, write_json_report, write_markdown_report
-from diapason.runner import RunResult, run_suite
+from diapason.registry import adapters as adapter_registry
+from diapason.registry import metrics as metric_registry
+from diapason.report import (
+    ReportMetadata,
+    build_metadata,
+    render_markdown,
+    write_json_report,
+    write_markdown_report,
+)
+from diapason.runner import RunResult, TaskResult, run_suite
 from diapason.version import __version__
 
 _console = Console()
@@ -57,6 +69,67 @@ def run(config_path: Path, output_dir: Path | None, fmt: str) -> None:
 
     _print_summary(result)
     _console.print(f"[dim]reports written to {destination}[/dim]")
+
+
+@main.command(name="list")
+def list_components() -> None:
+    """List the registered adapters and metrics."""
+    table = Table(title="registered components")
+    table.add_column("kind")
+    table.add_column("name")
+    for name in adapter_registry.names():
+        table.add_row("adapter", name)
+    for name in metric_registry.names():
+        table.add_row("metric", name)
+    _console.print(table)
+
+
+@main.command()
+@click.argument("results_json", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.option(
+    "--output",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Where to write the Markdown report. Defaults to stdout.",
+)
+def report(results_json: Path, output: Path | None) -> None:
+    """Re-render a Markdown report from a saved RESULTS_JSON file."""
+    data = json.loads(results_json.read_text(encoding="utf-8"))
+    result = _result_from_dict(data["results"])
+    metadata = _metadata_from_dict(data.get("metadata", {}))
+    markdown = render_markdown(result, metadata)
+    if output is None:
+        _console.print(markdown, markup=False)
+    else:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(markdown, encoding="utf-8")
+        _console.print(f"[dim]report written to {output}[/dim]")
+
+
+def _result_from_dict(payload: dict[str, Any]) -> RunResult:
+    """Rebuild a run result from the dictionary written by the JSON report."""
+    tasks = []
+    for task in payload.get("tasks", []):
+        tasks.append(
+            TaskResult(
+                name=str(task["name"]),
+                type=str(task["type"]),
+                scores={str(key): float(value) for key, value in task.get("scores", {}).items()},
+                num_examples=int(task.get("num_examples", 0)),
+                num_errors=int(task.get("num_errors", 0)),
+            )
+        )
+    return RunResult(suite=str(payload.get("suite", "")), tasks=tuple(tasks))
+
+
+def _metadata_from_dict(payload: dict[str, Any]) -> ReportMetadata:
+    """Rebuild report metadata from the dictionary written by the JSON report."""
+    return ReportMetadata(
+        suite=str(payload.get("suite", "")),
+        generated_at=str(payload.get("generated_at", "")),
+        diapason_version=str(payload.get("diapason_version", __version__)),
+        config_fingerprint=str(payload.get("config_fingerprint", "")),
+    )
 
 
 def _print_summary(result: RunResult) -> None:
