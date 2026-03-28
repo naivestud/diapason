@@ -8,6 +8,7 @@ suite config, and delegates to :mod:`diapason.runner` and
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -15,7 +16,7 @@ import click
 from rich.console import Console
 from rich.table import Table
 
-import diapason.adapters  # noqa: F401  (registers built-in adapters)
+import diapason.adapters
 import diapason.metrics  # noqa: F401  (registers built-in metrics)
 from diapason.config import load_suite
 from diapason.registry import adapters as adapter_registry
@@ -37,6 +38,18 @@ _console = Console()
 @click.version_option(version=__version__, prog_name="diapason")
 def main() -> None:
     """Reproducible evaluation harness for audio language models."""
+    _configure_logging(0)
+
+
+def _configure_logging(verbosity: int) -> None:
+    """Set the root log level from a verbosity count (0=warning, 1=info, 2+=debug)."""
+    if verbosity <= 0:
+        level = logging.WARNING
+    elif verbosity == 1:
+        level = logging.INFO
+    else:
+        level = logging.DEBUG
+    logging.basicConfig(level=level, format="%(levelname)s %(name)s: %(message)s")
 
 
 @main.command()
