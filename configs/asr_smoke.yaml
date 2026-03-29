@@ -1,0 +1,15 @@
+suite: asr_smoke
+description: >-
+  Small speech-recognition regression suite scored with the deterministic
+  dummy adapter. Useful for exercising the ASR pipeline end to end without
+  needing a real model.
+tasks:
+  - name: transcription
+    type: asr
+    manifest: ../examples/data/asr.jsonl
+    adapter: dummy
+    adapter_options:
+      corruption: 0.2
+    metrics: [wer, cer]
+    metric_options:
+      normalize: true
