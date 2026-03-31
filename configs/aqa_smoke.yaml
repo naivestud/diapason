@@ -1,0 +1,11 @@
+suite: aqa_smoke
+description: >-
+  Audio question answering suite scored from predictions stored in the
+  manifest. Demonstrates exact match and token F1.
+tasks:
+  - name: audio_qa
+    type: aqa
+    manifest: ../examples/data/aqa.jsonl
+    metrics: [exact_match, token_f1]
+    metric_options:
+      normalize: true
