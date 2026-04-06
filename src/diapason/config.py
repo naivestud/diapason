@@ -120,3 +120,19 @@ def _build_task(raw: dict[str, Any]) -> TaskConfig:
         metrics=tuple(raw.get("metrics", [])),
         metric_options=dict(raw.get("metric_options", {})),
     )
+
+
+def discover_suites(directory: str | Path) -> list[Path]:
+    """Return suite config files found directly inside a directory.
+
+    Args:
+        directory: Directory to scan. May not exist, in which case the result
+            is empty.
+
+    Returns:
+        Paths ending in ``.yaml`` or ``.yml``, sorted for stable output.
+    """
+    root = Path(directory)
+    if not root.is_dir():
+        return []
+    return sorted(path for path in root.iterdir() if path.suffix in (".yaml", ".yml"))

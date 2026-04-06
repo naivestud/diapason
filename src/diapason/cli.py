@@ -18,7 +18,7 @@ from rich.table import Table
 
 import diapason.adapters
 import diapason.metrics  # noqa: F401  (registers built-in metrics)
-from diapason.config import load_suite
+from diapason.config import discover_suites, load_suite
 from diapason.registry import adapters as adapter_registry
 from diapason.registry import metrics as metric_registry
 from diapason.report import (
@@ -85,8 +85,14 @@ def run(config_path: Path, output_dir: Path | None, fmt: str) -> None:
 
 
 @main.command(name="list")
-def list_components() -> None:
-    """List the registered adapters and metrics."""
+@click.option(
+    "--config-dir",
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    default=None,
+    help="Also list suite config files found in this directory.",
+)
+def list_components(config_dir: Path | None) -> None:
+    """List registered adapters and metrics, and optionally discovered suites."""
     table = Table(title="registered components")
     table.add_column("kind")
     table.add_column("name")
@@ -95,6 +101,13 @@ def list_components() -> None:
     for name in metric_registry.names():
         table.add_row("metric", name)
     _console.print(table)
+
+    if config_dir is not None:
+        suites = discover_suites(config_dir)
+        if suites:
+            _console.print(f"[bold]suites in {config_dir}[/bold]")
+            for path in suites:
+                _console.print(f"  {path.name}")
 
 
 @main.command()
