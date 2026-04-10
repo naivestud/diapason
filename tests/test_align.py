@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from diapason.metrics._align import align_sequences
+from diapason.metrics._alignment import align_sequences
 
 
 def test_identical_sequences_have_no_edits() -> None:
