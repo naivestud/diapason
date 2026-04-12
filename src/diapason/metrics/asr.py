@@ -7,18 +7,11 @@ length. They differ only in the token the edit distance is computed over.
 
 from __future__ import annotations
 
-import string
-
 from diapason.metrics._alignment import Alignment, align_sequences
+from diapason.metrics._text import normalize_text
 from diapason.registry import metrics
 
-_PUNCTUATION_TABLE = str.maketrans("", "", string.punctuation)
-
-
-def normalize_text(text: str) -> str:
-    """Lowercase ``text``, strip punctuation and collapse runs of whitespace."""
-    lowered = text.lower().translate(_PUNCTUATION_TABLE)
-    return " ".join(lowered.split())
+__all__ = ["cer", "normalize_text", "process_characters", "process_words", "wer"]
 
 
 def _split_words(text: str) -> list[str]:
