@@ -32,7 +32,6 @@ class DummyAdapter(ModelAdapter):
 
     def predict(self, example: Example) -> str:
         """Return the reference text, dropping words when corrupted."""
-        # print(f"[dummy] {example.id} -> {example.reference_text}")
         text = example.reference_text or ""
         if self.corruption <= 0.0 or not text:
             return text
