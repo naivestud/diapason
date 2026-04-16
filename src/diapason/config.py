@@ -69,7 +69,9 @@ def load_suite(path: str | Path) -> SuiteConfig:
     text = Path(path).read_text(encoding="utf-8")
     raw = yaml.safe_load(text)
     if not isinstance(raw, dict):
-        raise ConfigError(f"suite definition must be a mapping, got {type(raw).__name__}")
+        raise ConfigError(
+            f"{path}: suite definition must be a mapping, got {type(raw).__name__}"
+        )
     suite = _build_suite(raw)
     validate_suite(suite)
     return suite
