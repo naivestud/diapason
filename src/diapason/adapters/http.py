@@ -8,6 +8,8 @@ not require installing a separate HTTP client.
 
 from __future__ import annotations
 
+import json
+import urllib.request
 from typing import TYPE_CHECKING, Any
 
 from diapason.adapters.base import ModelAdapter
@@ -41,6 +43,24 @@ def build_chat_request(
         "temperature": temperature,
         "messages": [{"role": "user", "content": content}],
     }
+
+
+def extract_answer(response: dict[str, Any]) -> str:
+    """Pull the assistant's text answer out of a chat completion response.
+
+    Args:
+        response: The decoded JSON response body.
+
+    Returns:
+        The assistant message content.
+
+    Raises:
+        ValueError: If the response does not look like a chat completion.
+    """
+    try:
+        return str(response["choices"][0]["message"]["content"])
+    except (KeyError, IndexError, TypeError) as exc:
+        raise ValueError(f"unexpected chat completion response: {response!r}") from exc
 
 
 @adapters.register("http")
@@ -82,4 +102,22 @@ class HttpAdapter(ModelAdapter):
 
     def predict(self, example: Example) -> str:
         """Send the example to the endpoint and return the assistant answer."""
-        raise NotImplementedError
+        payload = build_chat_request(
+            example,
+            model=self.model,
+            max_tokens=self.max_tokens,
+            temperature=self.temperature,
+        )
+        response = self._post(payload)
+        return extract_answer(response)
+
+    def _post(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """POST ``payload`` to the chat completions endpoint and decode the body."""
+        url = f"{self.base_url}/chat/completions"
+        body = json.dumps(payload).encode("utf-8")
+        headers = {"Content-Type": "application/json"}
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+        request = urllib.request.Request(url, data=body, headers=headers, method="POST")
+        with urllib.request.urlopen(request, timeout=self.timeout) as response:
+            return json.loads(response.read().decode("utf-8"))
