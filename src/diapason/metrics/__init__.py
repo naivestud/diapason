@@ -14,6 +14,7 @@ from diapason.metrics.sed import (
     Event,
     event_based_f1,
     parse_events,
+    psds_lite,
     score_events,
 )
 
@@ -27,6 +28,7 @@ __all__ = [
     "mean",
     "normalize_text",
     "parse_events",
+    "psds_lite",
     "score_events",
     "token_f1",
     "wer",
