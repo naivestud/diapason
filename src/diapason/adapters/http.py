@@ -12,7 +12,7 @@ import json
 import time
 import urllib.error
 import urllib.request
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from diapason.adapters.base import ModelAdapter
 from diapason.registry import adapters
@@ -125,13 +125,16 @@ class HttpAdapter(ModelAdapter):
             try:
                 request = urllib.request.Request(url, data=body, headers=headers, method="POST")
                 with urllib.request.urlopen(request, timeout=self.timeout) as response:
-                    return json.loads(response.read().decode("utf-8"))
+                    decoded = json.loads(response.read().decode("utf-8"))
+                    return cast(dict[str, Any], decoded)
             except urllib.error.URLError as exc:
                 last_error = exc
                 if attempt < self.max_retries - 1:
                     time.sleep(self._backoff_delay(attempt))
         attempts = self.max_retries
-        raise RuntimeError(f"chat completions request failed after {attempts} attempts") from last_error
+        raise RuntimeError(
+            f"chat completions request failed after {attempts} attempts"
+        ) from last_error
 
     @staticmethod
     def _backoff_delay(attempt: int) -> float:
