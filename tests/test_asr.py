@@ -62,3 +62,22 @@ def test_empty_reference_with_hypothesis_raises() -> None:
         wer("", "hello")
     with pytest.raises(ValueError, match="empty reference"):
         cer("", "hello")
+
+
+def test_wer_multi_reference_picks_perfect_match() -> None:
+    assert wer(["the cat sat", "a dog ran"], "a dog ran") == 0.0
+
+
+def test_wer_multi_reference_reports_best_error() -> None:
+    # Against "the cat sat" the hypothesis misses one word; against "the cat"
+    # it is exact, so the best (zero) error is reported.
+    assert wer(["the cat sat", "the cat"], "the cat") == 0.0
+
+
+def test_wer_empty_reference_list_raises() -> None:
+    with pytest.raises(ValueError, match="at least one reference"):
+        wer([], "hello")
+
+
+def test_cer_multi_reference() -> None:
+    assert cer(["abc", "xyz"], "xyz") == 0.0
