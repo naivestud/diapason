@@ -7,6 +7,8 @@ length. They differ only in the token the edit distance is computed over.
 
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
+
 from diapason.metrics._alignment import Alignment, align_sequences
 from diapason.metrics._text import normalize_text
 from diapason.registry import metrics
@@ -34,12 +36,32 @@ def process_characters(reference: str, hypothesis: str) -> Alignment:
     return align_sequences(_split_chars(reference), _split_chars(hypothesis))
 
 
+def _best_across_references(
+    scorer: Callable[[str, str], float],
+    reference: str | Sequence[str],
+    hypothesis: str,
+) -> float:
+    """Score against whichever reference yields the lowest (best) value."""
+    references = [reference] if isinstance(reference, str) else list(reference)
+    if not references:
+        raise ValueError("at least one reference is required")
+    return min(scorer(ref, hypothesis) for ref in references)
+
+
 @metrics.register("wer")
-def wer(reference: str, hypothesis: str, *, normalize: bool = False, **options: object) -> float:
+def wer(
+    reference: str | Sequence[str],
+    hypothesis: str,
+    *,
+    normalize: bool = False,
+    **options: object,
+) -> float:
     """Word error rate.
 
     Args:
-        reference: Ground-truth transcription.
+        reference: Ground-truth transcription, or several acceptable
+            transcriptions. With several references the best (lowest) error
+            rate is reported.
         hypothesis: Model transcription to score.
         normalize: When true, lowercase and strip punctuation before scoring.
 
@@ -47,6 +69,15 @@ def wer(reference: str, hypothesis: str, *, normalize: bool = False, **options: 
         Edit distance over word tokens divided by the number of reference
         words. Lower is better; ``0.0`` is a perfect transcription.
     """
+
+    def score_one(ref: str, hyp: str) -> float:
+        return _wer_single(ref, hyp, normalize=normalize)
+
+    return _best_across_references(score_one, reference, hypothesis)
+
+
+def _wer_single(reference: str, hypothesis: str, *, normalize: bool) -> float:
+    """Word error rate against a single reference transcription."""
     if normalize:
         reference = normalize_text(reference)
         hypothesis = normalize_text(hypothesis)
@@ -60,11 +91,19 @@ def wer(reference: str, hypothesis: str, *, normalize: bool = False, **options: 
 
 
 @metrics.register("cer")
-def cer(reference: str, hypothesis: str, *, normalize: bool = False, **options: object) -> float:
+def cer(
+    reference: str | Sequence[str],
+    hypothesis: str,
+    *,
+    normalize: bool = False,
+    **options: object,
+) -> float:
     """Character error rate.
 
     Args:
-        reference: Ground-truth transcription.
+        reference: Ground-truth transcription, or several acceptable
+            transcriptions. With several references the best (lowest) error
+            rate is reported.
         hypothesis: Model transcription to score.
         normalize: When true, lowercase and strip punctuation before scoring.
 
@@ -72,6 +111,15 @@ def cer(reference: str, hypothesis: str, *, normalize: bool = False, **options: 
         Edit distance over character tokens divided by the number of reference
         characters. Lower is better.
     """
+
+    def score_one(ref: str, hyp: str) -> float:
+        return _cer_single(ref, hyp, normalize=normalize)
+
+    return _best_across_references(score_one, reference, hypothesis)
+
+
+def _cer_single(reference: str, hypothesis: str, *, normalize: bool) -> float:
+    """Character error rate against a single reference transcription."""
     if normalize:
         reference = normalize_text(reference)
         hypothesis = normalize_text(hypothesis)

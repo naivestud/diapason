@@ -33,6 +33,7 @@ class Example:
     audio: str | None = None
     prompt: str | None = None
     reference_text: str | None = None
+    reference_alternatives: tuple[str, ...] = ()
     prediction_text: str | None = None
     reference_events: tuple[Event, ...] | None = None
     prediction_events: tuple[Event, ...] | None = None
@@ -99,6 +100,7 @@ def _parse_row(row: dict[str, Any], task_type: str) -> Example:
     reference_events: tuple[Event, ...] | None = None
     prediction_events: tuple[Event, ...] | None = None
     reference_text: str | None = None
+    reference_alternatives: tuple[str, ...] = ()
     prediction_text: str | None = None
 
     if task_type == "sed":
@@ -108,7 +110,12 @@ def _parse_row(row: dict[str, Any], task_type: str) -> Example:
             prediction_events = parse_events(prediction)
     else:
         if reference is not None:
-            reference_text = str(reference)
+            if isinstance(reference, list):
+                texts = [str(item) for item in reference]
+                reference_text = texts[0] if texts else None
+                reference_alternatives = tuple(texts[1:])
+            else:
+                reference_text = str(reference)
         if prediction is not None:
             prediction_text = str(prediction)
 
@@ -120,6 +127,7 @@ def _parse_row(row: dict[str, Any], task_type: str) -> Example:
         audio=_optional_str(row.get("audio")),
         prompt=_optional_str(row.get("question", row.get("prompt"))),
         reference_text=reference_text,
+        reference_alternatives=reference_alternatives,
         prediction_text=prediction_text,
         reference_events=reference_events,
         prediction_events=prediction_events,
