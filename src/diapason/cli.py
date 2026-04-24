@@ -42,8 +42,14 @@ def main() -> None:
 
 
 def _configure_logging(verbosity: int) -> None:
-    """Set the root log level from a verbosity count (0=warning, 1=info, 2+=debug)."""
-    if verbosity <= 0:
+    """Set the root log level from a verbosity count.
+
+    Negative values mean quiet (errors only), ``0`` warning, ``1`` info and
+    ``2`` or more debug.
+    """
+    if verbosity < 0:
+        level = logging.ERROR
+    elif verbosity == 0:
         level = logging.WARNING
     elif verbosity == 1:
         level = logging.INFO
@@ -68,8 +74,11 @@ def _configure_logging(verbosity: int) -> None:
     show_default=True,
     help="Which report formats to write.",
 )
-def run(config_path: Path, output_dir: Path | None, fmt: str) -> None:
+@click.option("-v", "--verbose", count=True, help="Increase logging verbosity.")
+@click.option("-q", "--quiet", is_flag=True, help="Only print errors.")
+def run(config_path: Path, output_dir: Path | None, fmt: str, verbose: int, quiet: bool) -> None:
     """Evaluate the suite defined in CONFIG_PATH and write reports."""
+    _configure_logging(-1 if quiet else verbose)
     suite = load_suite(config_path)
     result = run_suite(suite, base_dir=config_path.parent)
     metadata = build_metadata(suite)
@@ -80,8 +89,9 @@ def run(config_path: Path, output_dir: Path | None, fmt: str) -> None:
     if fmt in ("md", "both"):
         write_markdown_report(result, destination / f"{suite.name}.md", metadata)
 
-    _print_summary(result)
-    _console.print(f"[dim]reports written to {destination}[/dim]")
+    if not quiet:
+        _print_summary(result)
+        _console.print(f"[dim]reports written to {destination}[/dim]")
 
 
 @main.command(name="list")
