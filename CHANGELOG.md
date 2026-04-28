@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-08-08
+
+### Added
+
+- Multiple reference transcriptions per example; WER and CER report the best
+  match.
+- `--quiet` and `--verbose` flags on the `run` command.
+
+### Changed
+
+- The `run` command resolves the output directory to an absolute path and
+  creates it before writing reports.
+
 ## [0.2.0] - 2026-08-08
 
 ### Added
