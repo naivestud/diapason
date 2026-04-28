@@ -6,10 +6,18 @@ A reproducible evaluation harness for audio language models.
 (ASR), sound event detection (SED) and audio question answering (AQA) — and
 turns the results into shareable Markdown and JSON reports.
 
-The harness is deliberately model-agnostic. It evaluates predictions, so you can
-score a manifest of stored predictions, or plug in an adapter that calls a real
-model. A deterministic dummy adapter ships with the package so the whole
+The harness is deliberately model-agnostic. It evaluates *predictions*, so you
+can score a manifest of stored predictions, or plug in an adapter that calls a
+real model. A deterministic dummy adapter ships with the package so the whole
 pipeline runs — and is tested — without any model or audio files.
+
+## Task families
+
+| Type | Task | Metrics |
+| --- | --- | --- |
+| `asr` | Speech recognition | `wer`, `cer` |
+| `sed` | Sound event detection | `event_f1`, `psds_lite` |
+| `aqa` | Audio question answering | `exact_match`, `token_f1` |
 
 ## Installation
 
@@ -34,25 +42,56 @@ diapason run configs/asr_smoke.yaml
 This evaluates the suite, prints a summary table, and writes Markdown and JSON
 reports to `results/`.
 
-List the registered adapters and metrics:
+Other useful commands:
 
 ```bash
-diapason list
+diapason list                      # registered adapters and metrics
+diapason list --config-dir configs # also show discovered suites
+diapason report results/demo.json  # re-render a saved report
 ```
 
-## Task families
+## Using the Python API
 
-| Type | Task | Metrics |
-| --- | --- | --- |
-| `asr` | Speech recognition | `wer`, `cer` |
-| `sed` | Sound event detection | `event_f1` |
-| `aqa` | Audio question answering | `exact_match`, `token_f1` |
+```python
+from pathlib import Path
+
+from diapason.config import load_suite
+from diapason.report import build_metadata, write_markdown_report
+from diapason.runner import run_suite
+
+config_path = Path("configs/asr_smoke.yaml")
+suite = load_suite(config_path)
+result = run_suite(suite, base_dir=config_path.parent)
+
+for task in result.tasks:
+    print(task.name, task.scores)
+
+write_markdown_report(result, "report.md", build_metadata(suite))
+```
+
+## Suite configs and manifests
+
+A suite is a small YAML file listing tasks; each task points at a JSONL manifest
+of examples. See [`docs/usage.md`](docs/usage.md) for the full schema of both.
 
 ## Reproducibility
 
 Every report records the suite name, a fingerprint of the suite config, the
 diapason version and a timestamp, so a result can be traced back to the exact
-definition that produced it.
+definition that produced it. See [`docs/design-notes.md`](docs/design-notes.md)
+for the reasoning behind the design.
 
-See `docs/usage.md` for the manifest schema and `docs/architecture.md` for how
-the pieces fit together.
+## Development
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for setting up a development
+environment and running the checks. The short version:
+
+```bash
+pytest
+ruff check . && ruff format --check .
+mypy src/diapason tests
+```
+
+## License
+
+MIT — see [`LICENSE`](LICENSE).
