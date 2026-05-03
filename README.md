@@ -1,5 +1,9 @@
 # diapason
 
+[![CI](https://github.com/naivestud/diapason/actions/workflows/ci.yml/badge.svg)](https://github.com/naivestud/diapason/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org)
+
 A reproducible evaluation harness for audio language models.
 
 `diapason` scores model outputs on three task families — speech recognition
