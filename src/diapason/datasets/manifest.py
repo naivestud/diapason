@@ -15,10 +15,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from diapason.config import TASK_TYPES
 from diapason.metrics.sed import Event, parse_events
-
-#: Task families that manifests can be loaded for.
-_TASK_TYPES = ("asr", "sed", "aqa")
 
 
 class ManifestError(ValueError):
@@ -55,7 +53,7 @@ def load_manifest(path: str | Path, task_type: str) -> list[Example]:
         ManifestError: If the file is empty, a line is not valid JSON, or an
             example is missing a field its task type requires.
     """
-    if task_type not in _TASK_TYPES:
+    if task_type not in TASK_TYPES:
         raise ManifestError(f"unknown task type '{task_type}'")
     examples: list[Example] = []
     text = Path(path).read_text(encoding="utf-8")
