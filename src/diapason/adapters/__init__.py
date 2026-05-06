@@ -9,5 +9,6 @@ from __future__ import annotations
 
 from diapason.adapters.base import ModelAdapter
 from diapason.adapters.dummy import DummyAdapter
+from diapason.adapters.http import HttpAdapter
 
-__all__ = ["DummyAdapter", "ModelAdapter"]
+__all__ = ["DummyAdapter", "HttpAdapter", "ModelAdapter"]
