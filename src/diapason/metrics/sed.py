@@ -77,6 +77,27 @@ def _group_by_label(events: Sequence[Event]) -> dict[str, list[Event]]:
     return by_label
 
 
+def _count_matches(refs: Sequence[Event], preds: Sequence[Event], collar: float) -> int:
+    """Count how many predicted events match a reference event of the same label.
+
+    Predictions are walked in onset order and each reference event is matched
+    at most once, so a duplicated prediction cannot score twice.
+    """
+    matched: set[int] = set()
+    true_positives = 0
+    for pred in sorted(preds, key=lambda event: event.onset):
+        for idx, ref in enumerate(refs):
+            if idx in matched:
+                continue
+            onset_ok = abs(pred.onset - ref.onset) <= collar
+            offset_ok = abs(pred.offset - ref.offset) <= collar
+            if onset_ok and offset_ok:
+                matched.add(idx)
+                true_positives += 1
+                break
+    return true_positives
+
+
 def score_events(
     reference: Sequence[Event],
     prediction: Sequence[Event],
@@ -105,19 +126,8 @@ def score_events(
     false_negatives = 0
     for label in set(ref_by_label) | set(pred_by_label):
         refs = ref_by_label.get(label, [])
-        preds = sorted(pred_by_label.get(label, []), key=lambda event: event.onset)
-        matched: set[int] = set()
-        label_tp = 0
-        for pred in preds:
-            for idx, ref in enumerate(refs):
-                if idx in matched:
-                    continue
-                onset_ok = abs(pred.onset - ref.onset) <= collar
-                offset_ok = abs(pred.offset - ref.offset) <= collar
-                if onset_ok and offset_ok:
-                    matched.add(idx)
-                    label_tp += 1
-                    break
+        preds = pred_by_label.get(label, [])
+        label_tp = _count_matches(refs, preds, collar)
         true_positives += label_tp
         false_positives += len(preds) - label_tp
         false_negatives += len(refs) - label_tp
