@@ -84,16 +84,32 @@ def run(config_path: Path, output_dir: Path | None, fmt: str, verbose: int, quie
     metadata = build_metadata(suite)
 
     destination = output_dir if output_dir is not None else Path.cwd() / "results"
-    destination = destination.resolve()
-    destination.mkdir(parents=True, exist_ok=True)
-    if fmt in ("json", "both"):
-        write_json_report(result, destination / f"{suite.name}.json", metadata)
-    if fmt in ("md", "both"):
-        write_markdown_report(result, destination / f"{suite.name}.md", metadata)
+    destination = _write_reports(result, suite.name, destination, fmt, metadata)
 
     if not quiet:
         _print_summary(result)
         _console.print(f"[dim]reports written to {destination}[/dim]")
+
+
+def _write_reports(
+    result: RunResult,
+    suite_name: str,
+    destination: Path,
+    fmt: str,
+    metadata: ReportMetadata,
+) -> Path:
+    """Write the requested report formats into ``destination``.
+
+    The directory is resolved to an absolute path and created when needed.
+    Returns the directory the reports were written to.
+    """
+    destination = destination.resolve()
+    destination.mkdir(parents=True, exist_ok=True)
+    if fmt in ("json", "both"):
+        write_json_report(result, destination / f"{suite_name}.json", metadata)
+    if fmt in ("md", "both"):
+        write_markdown_report(result, destination / f"{suite_name}.md", metadata)
+    return destination
 
 
 @main.command(name="list")
