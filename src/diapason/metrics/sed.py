@@ -69,6 +69,14 @@ class EventScore:
     f1: float
 
 
+def _group_by_label(events: Sequence[Event]) -> dict[str, list[Event]]:
+    """Group events by their label, preserving the order within each label."""
+    by_label: dict[str, list[Event]] = {}
+    for event in events:
+        by_label.setdefault(event.label, []).append(event)
+    return by_label
+
+
 def score_events(
     reference: Sequence[Event],
     prediction: Sequence[Event],
@@ -89,12 +97,8 @@ def score_events(
     Returns:
         The aggregated :class:`EventScore`.
     """
-    ref_by_label: dict[str, list[Event]] = {}
-    for event in reference:
-        ref_by_label.setdefault(event.label, []).append(event)
-    pred_by_label: dict[str, list[Event]] = {}
-    for event in prediction:
-        pred_by_label.setdefault(event.label, []).append(event)
+    ref_by_label = _group_by_label(reference)
+    pred_by_label = _group_by_label(prediction)
 
     true_positives = 0
     false_positives = 0
