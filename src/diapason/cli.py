@@ -41,21 +41,20 @@ def main() -> None:
     _configure_logging(0)
 
 
+#: Log level for each verbosity count, indexed by ``verbosity + 1``.
+_VERBOSITY_LEVELS = (logging.ERROR, logging.WARNING, logging.INFO, logging.DEBUG)
+
+
 def _configure_logging(verbosity: int) -> None:
     """Set the root log level from a verbosity count.
 
     Negative values mean quiet (errors only), ``0`` warning, ``1`` info and
     ``2`` or more debug.
     """
-    if verbosity < 0:
-        level = logging.ERROR
-    elif verbosity == 0:
-        level = logging.WARNING
-    elif verbosity == 1:
-        level = logging.INFO
-    else:
-        level = logging.DEBUG
-    logging.basicConfig(level=level, format="%(levelname)s %(name)s: %(message)s")
+    index = min(max(verbosity + 1, 0), len(_VERBOSITY_LEVELS) - 1)
+    logging.basicConfig(
+        level=_VERBOSITY_LEVELS[index], format="%(levelname)s %(name)s: %(message)s"
+    )
 
 
 @main.command()
