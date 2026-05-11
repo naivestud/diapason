@@ -24,6 +24,7 @@ from diapason.registry import metrics as metric_registry
 from diapason.report import (
     ReportMetadata,
     build_metadata,
+    format_score,
     render_markdown,
     write_json_report,
     write_markdown_report,
@@ -194,7 +195,9 @@ def _print_summary(result: RunResult) -> None:
     table.add_column("errors", justify="right")
     table.add_column("scores")
     for task in result.tasks:
-        scores = ", ".join(f"{name}={value:.4f}" for name, value in sorted(task.scores.items()))
+        scores = ", ".join(
+            f"{name}={format_score(value)}" for name, value in sorted(task.scores.items())
+        )
         table.add_row(task.name, task.type, str(task.num_examples), str(task.num_errors), scores)
     _console.print(table)
 

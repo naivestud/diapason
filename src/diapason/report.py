@@ -107,7 +107,7 @@ def render_markdown(result: RunResult, metadata: ReportMetadata) -> str:
     """
     tasks = []
     for task in result.tasks:
-        scores = {name: _format_score(value) for name, value in sorted(task.scores.items())}
+        scores = {name: format_score(value) for name, value in sorted(task.scores.items())}
         summary = ", ".join(f"{name}={value}" for name, value in scores.items()) or "—"
         tasks.append(
             {
@@ -130,7 +130,7 @@ def write_markdown_report(result: RunResult, path: str | Path, metadata: ReportM
     return output_path
 
 
-def _format_score(value: float) -> str:
+def format_score(value: float) -> str:
     """Format a metric value with four decimal places."""
     return f"{value:.4f}"
 
