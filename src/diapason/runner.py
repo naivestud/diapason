@@ -7,6 +7,7 @@ returns structured results that the report writer can render.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, cast
@@ -102,16 +103,10 @@ def run_task(task: TaskConfig, base_dir: Path | None = None) -> TaskResult:
     example_results: list[ExampleResult] = []
     num_errors = 0
     for example in examples:
-        try:
-            reference, prediction = _reference_and_prediction(example, task, adapter)
-            scores = {
-                metric_name: fn(reference, prediction, **task.metric_options)
-                for metric_name, fn in metric_fns.items()
-            }
-            example_results.append(ExampleResult(example_id=example.id, scores=scores))
-        except Exception as exc:
+        result = _score_example(example, task, adapter, metric_fns)
+        if result.error is not None:
             num_errors += 1
-            example_results.append(ExampleResult(example_id=example.id, error=str(exc)))
+        example_results.append(result)
 
     aggregated = {
         metric_name: aggregate_examples(
@@ -127,6 +122,24 @@ def run_task(task: TaskConfig, base_dir: Path | None = None) -> TaskResult:
         num_errors=num_errors,
         example_results=tuple(example_results),
     )
+
+
+def _score_example(
+    example: Example,
+    task: TaskConfig,
+    adapter: ModelAdapter | None,
+    metric_fns: dict[str, Callable[..., Any]],
+) -> ExampleResult:
+    """Score one example, converting any failure into an error result."""
+    try:
+        reference, prediction = _reference_and_prediction(example, task, adapter)
+        scores = {
+            metric_name: fn(reference, prediction, **task.metric_options)
+            for metric_name, fn in metric_fns.items()
+        }
+        return ExampleResult(example_id=example.id, scores=scores)
+    except Exception as exc:
+        return ExampleResult(example_id=example.id, error=str(exc))
 
 
 def _build_adapter(task: TaskConfig) -> ModelAdapter:
