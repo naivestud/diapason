@@ -112,14 +112,29 @@ def _build_suite(raw: dict[str, Any]) -> SuiteConfig:
 
 def _build_task(raw: dict[str, Any]) -> TaskConfig:
     return TaskConfig(
-        name=str(raw.get("name", "")),
-        type=str(raw.get("type", "")),
-        manifest=str(raw.get("manifest", "")),
-        adapter=str(raw.get("adapter", "dummy")),
-        adapter_options=dict(raw.get("adapter_options", {})),
-        metrics=tuple(raw.get("metrics", [])),
-        metric_options=dict(raw.get("metric_options", {})),
+        name=_str_field(raw, "name"),
+        type=_str_field(raw, "type"),
+        manifest=_str_field(raw, "manifest"),
+        adapter=_str_field(raw, "adapter", default="dummy"),
+        adapter_options=_options_field(raw, "adapter_options"),
+        metrics=_names_field(raw, "metrics"),
+        metric_options=_options_field(raw, "metric_options"),
     )
+
+
+def _str_field(raw: dict[str, Any], key: str, default: str = "") -> str:
+    """Read ``key`` from a raw task mapping and coerce it to a string."""
+    return str(raw.get(key, default))
+
+
+def _options_field(raw: dict[str, Any], key: str) -> dict[str, Any]:
+    """Read an optional keyword-options mapping from a raw task mapping."""
+    return dict(raw.get(key, {}))
+
+
+def _names_field(raw: dict[str, Any], key: str) -> tuple[str, ...]:
+    """Read an optional list of names from a raw task mapping."""
+    return tuple(raw.get(key, []))
 
 
 def discover_suites(directory: str | Path) -> list[Path]:
