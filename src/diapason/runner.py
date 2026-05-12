@@ -70,6 +70,19 @@ def run_suite(suite: SuiteConfig, base_dir: Path | None = None) -> RunResult:
     return RunResult(suite=suite.name, tasks=task_results)
 
 
+def resolve_manifest_path(manifest: str, base_dir: Path | None = None) -> Path:
+    """Resolve a task's manifest path against an optional base directory.
+
+    Absolute paths are returned unchanged; relative paths are joined onto
+    ``base_dir`` when one is given, which is how suite configs reference
+    manifests that live next to the config file.
+    """
+    manifest_path = Path(manifest)
+    if base_dir is not None and not manifest_path.is_absolute():
+        manifest_path = base_dir / manifest_path
+    return manifest_path
+
+
 def run_task(task: TaskConfig, base_dir: Path | None = None) -> TaskResult:
     """Evaluate a single task and aggregate its scores.
 
@@ -81,10 +94,7 @@ def run_task(task: TaskConfig, base_dir: Path | None = None) -> TaskResult:
     Returns:
         A :class:`TaskResult` with one aggregated score per configured metric.
     """
-    manifest_path = Path(task.manifest)
-    if base_dir is not None and not manifest_path.is_absolute():
-        manifest_path = base_dir / manifest_path
-    examples = load_manifest(manifest_path, task.type)
+    examples = load_manifest(resolve_manifest_path(task.manifest, base_dir), task.type)
 
     adapter = None if task.type == "sed" else _build_adapter(task)
     metric_fns = {name: metrics.get(name) for name in task.metrics}
