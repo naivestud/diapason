@@ -67,7 +67,10 @@ def load_manifest(path: str | Path, task_type: str) -> list[Example]:
             raise ManifestError(f"{path}:{line_number}: invalid JSON ({exc})") from exc
         if not isinstance(row, Mapping):
             raise ManifestError(f"{path}:{line_number}: expected a JSON object")
-        example = _parse_row(dict(row), task_type)
+        try:
+            example = _parse_row(dict(row), task_type)
+        except ValueError as exc:
+            raise ManifestError(f"{path}:{line_number}: {exc}") from exc
         _validate(example, task_type, line_number)
         examples.append(example)
     if not examples:
