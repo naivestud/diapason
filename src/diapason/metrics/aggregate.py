@@ -17,6 +17,20 @@ def mean(values: Sequence[float]) -> float:
     return sum(values) / len(values)
 
 
+def median(values: Sequence[float]) -> float:
+    """Median; an empty sequence aggregates to ``0.0``.
+
+    With an even number of values the two middle values are averaged.
+    """
+    if not values:
+        return 0.0
+    ordered = sorted(values)
+    middle = len(ordered) // 2
+    if len(ordered) % 2 == 1:
+        return ordered[middle]
+    return (ordered[middle - 1] + ordered[middle]) / 2
+
+
 def aggregate_examples(values: Sequence[float]) -> float:
     """Collapse per-example metric values into a single task score.
 
