@@ -19,6 +19,15 @@ def test_aggregate_examples_is_mean() -> None:
     assert aggregate_examples([0.2, 0.4]) == pytest.approx(0.3)
 
 
+def test_aggregate_examples_median_method() -> None:
+    assert aggregate_examples([0.0, 0.5, 1.0], method="median") == pytest.approx(0.5)
+
+
+def test_aggregate_examples_unknown_method_raises() -> None:
+    with pytest.raises(ValueError, match="unknown aggregation method"):
+        aggregate_examples([1.0], method="mode")
+
+
 def test_aggregate_tasks_macro_average() -> None:
     assert aggregate_tasks({"small": 0.5, "large": 1.0}) == pytest.approx(0.75)
 

@@ -7,7 +7,13 @@ suite configs by name.
 
 from __future__ import annotations
 
-from diapason.metrics.aggregate import aggregate_examples, aggregate_tasks, mean, median
+from diapason.metrics.aggregate import (
+    AGGREGATION_METHODS,
+    aggregate_examples,
+    aggregate_tasks,
+    mean,
+    median,
+)
 from diapason.metrics.asr import cer, normalize_text, wer
 from diapason.metrics.qa import exact_match, token_f1
 from diapason.metrics.sed import (
@@ -19,6 +25,7 @@ from diapason.metrics.sed import (
 )
 
 __all__ = [
+    "AGGREGATION_METHODS",
     "Event",
     "aggregate_examples",
     "aggregate_tasks",

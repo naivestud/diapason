@@ -31,16 +31,33 @@ def median(values: Sequence[float]) -> float:
     return (ordered[middle - 1] + ordered[middle]) / 2
 
 
-def aggregate_examples(values: Sequence[float]) -> float:
+#: Aggregation strategies understood by :func:`aggregate_examples`.
+AGGREGATION_METHODS = ("mean", "median")
+
+
+def aggregate_examples(values: Sequence[float], method: str = "mean") -> float:
     """Collapse per-example metric values into a single task score.
 
     Args:
         values: One metric value per evaluated example.
+        method: Aggregation strategy, one of :data:`AGGREGATION_METHODS`.
+            ``"mean"`` (the default) averages every example; ``"median"``
+            reports the middle value, which is more robust against a few
+            badly scored examples.
 
     Returns:
-        The mean of ``values``.
+        The aggregated score.
+
+    Raises:
+        ValueError: If ``method`` is not a known aggregation strategy.
     """
-    return mean(values)
+    if method == "mean":
+        return mean(values)
+    if method == "median":
+        return median(values)
+    raise ValueError(
+        f"unknown aggregation method '{method}' (expected one of {', '.join(AGGREGATION_METHODS)})"
+    )
 
 
 def aggregate_tasks(task_scores: Mapping[str, float]) -> float:
