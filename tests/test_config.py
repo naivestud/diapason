@@ -51,6 +51,39 @@ tasks:
     assert task.adapter == "dummy"
     assert task.metrics == ()
     assert task.adapter_options == {}
+    assert task.aggregate == "mean"
+
+
+def test_aggregate_method_from_yaml(tmp_path: Path) -> None:
+    path = _write(
+        tmp_path,
+        """
+suite: d
+tasks:
+  - name: t
+    type: asr
+    manifest: m.jsonl
+    aggregate: median
+""",
+    )
+    task = load_suite(path).tasks[0]
+    assert task.aggregate == "median"
+
+
+def test_unknown_aggregate_method_raises(tmp_path: Path) -> None:
+    path = _write(
+        tmp_path,
+        """
+suite: d
+tasks:
+  - name: t
+    type: asr
+    manifest: m.jsonl
+    aggregate: mode
+""",
+    )
+    with pytest.raises(ConfigError, match="aggregation method"):
+        load_suite(path)
 
 
 def test_unknown_task_type_raises(tmp_path: Path) -> None:

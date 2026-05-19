@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from diapason.config import SuiteConfig, TaskConfig
 from diapason.runner import run_suite, run_task
 
@@ -100,3 +102,23 @@ def test_bad_example_is_isolated(tmp_path: Path) -> None:
     assert result.num_errors == 1
     assert result.num_examples == 2
     assert result.scores["wer"] == 0.0
+
+
+def test_median_aggregation_ignores_outlier(tmp_path: Path) -> None:
+    path = tmp_path / "outlier.jsonl"
+    path.write_text(
+        "\n".join(
+            [
+                '{"id": "1", "reference": "a b", "prediction": "a b"}',
+                '{"id": "2", "reference": "c d", "prediction": "c d"}',
+                '{"id": "3", "reference": "e f", "prediction": "x y"}',
+            ]
+        ),
+        encoding="utf-8",
+    )
+    mean_task = TaskConfig(name="t", type="asr", manifest=str(path), metrics=("wer",))
+    median_task = TaskConfig(
+        name="t", type="asr", manifest=str(path), metrics=("wer",), aggregate="median"
+    )
+    assert run_task(mean_task).scores["wer"] == pytest.approx(1 / 3)
+    assert run_task(median_task).scores["wer"] == 0.0

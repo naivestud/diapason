@@ -110,7 +110,8 @@ def run_task(task: TaskConfig, base_dir: Path | None = None) -> TaskResult:
 
     aggregated = {
         metric_name: aggregate_examples(
-            [result.scores[metric_name] for result in example_results if result.error is None]
+            [result.scores[metric_name] for result in example_results if result.error is None],
+            method=task.aggregate,
         )
         for metric_name in metric_fns
     }

@@ -14,6 +14,8 @@ from typing import Any
 
 import yaml
 
+from diapason.metrics.aggregate import AGGREGATION_METHODS
+
 #: Task families understood by the harness.
 TASK_TYPES = ("asr", "sed", "aqa")
 
@@ -34,6 +36,8 @@ class TaskConfig:
         adapter_options: Keyword arguments forwarded to the adapter.
         metrics: Names of registered metrics to compute.
         metric_options: Keyword arguments forwarded to every metric.
+        aggregate: How per-example scores collapse into one task score;
+            one of :data:`~diapason.metrics.aggregate.AGGREGATION_METHODS`.
     """
 
     name: str
@@ -43,6 +47,7 @@ class TaskConfig:
     adapter_options: dict[str, Any] = field(default_factory=dict)
     metrics: tuple[str, ...] = ()
     metric_options: dict[str, Any] = field(default_factory=dict)
+    aggregate: str = "mean"
 
 
 @dataclass(frozen=True)
@@ -99,6 +104,11 @@ def validate_suite(suite: SuiteConfig) -> None:
             )
         if not task.manifest:
             raise ConfigError(f"task '{task.name}' is missing a manifest path")
+        if task.aggregate not in AGGREGATION_METHODS:
+            raise ConfigError(
+                f"task '{task.name}' has unknown aggregation method '{task.aggregate}' "
+                f"(expected one of {', '.join(AGGREGATION_METHODS)})"
+            )
 
 
 def _build_suite(raw: dict[str, Any]) -> SuiteConfig:
@@ -119,6 +129,7 @@ def _build_task(raw: dict[str, Any]) -> TaskConfig:
         adapter_options=_options_field(raw, "adapter_options"),
         metrics=_names_field(raw, "metrics"),
         metric_options=_options_field(raw, "metric_options"),
+        aggregate=_str_field(raw, "aggregate", default="mean"),
     )
 
 
