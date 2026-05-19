@@ -19,6 +19,7 @@ from diapason.metrics.qa import exact_match, token_f1
 from diapason.metrics.sed import (
     Event,
     event_based_f1,
+    event_based_precision,
     parse_events,
     psds_lite,
     score_events,
@@ -31,6 +32,7 @@ __all__ = [
     "aggregate_tasks",
     "cer",
     "event_based_f1",
+    "event_based_precision",
     "exact_match",
     "mean",
     "median",

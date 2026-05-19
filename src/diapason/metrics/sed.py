@@ -159,6 +159,22 @@ def event_based_f1(
     return score_events(reference, prediction, collar=collar).f1
 
 
+@metrics.register("event_precision")
+def event_based_precision(
+    reference: Sequence[Event],
+    prediction: Sequence[Event],
+    *,
+    collar: float = 0.0,
+    **options: object,
+) -> float:
+    """Event-based precision with a collar tolerance.
+
+    Registered under the metric name ``event_precision``. The fraction of
+    predicted events that match a reference event; higher is better.
+    """
+    return score_events(reference, prediction, collar=collar).precision
+
+
 @metrics.register("psds_lite")
 def psds_lite(
     reference: Sequence[Event],

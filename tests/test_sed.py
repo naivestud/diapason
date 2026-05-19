@@ -7,6 +7,7 @@ import pytest
 from diapason.metrics.sed import (
     Event,
     event_based_f1,
+    event_based_precision,
     parse_events,
     psds_lite,
     score_events,
@@ -68,6 +69,21 @@ def test_false_positive_lowers_precision() -> None:
     score = score_events(ref, pred)
     assert score.precision == 0.5
     assert score.recall == 1.0
+
+
+def test_event_precision_counts_spurious_predictions() -> None:
+    ref = [Event(0.0, 1.0, "dog")]
+    pred = [Event(0.0, 1.0, "dog"), Event(4.0, 5.0, "cat")]
+    assert event_based_precision(ref, pred) == 0.5
+
+
+def test_event_precision_perfect_detection_is_one() -> None:
+    ref = [Event(0.0, 1.0, "dog")]
+    assert event_based_precision(ref, [Event(0.0, 1.0, "dog")]) == 1.0
+
+
+def test_event_precision_without_predictions_is_zero() -> None:
+    assert event_based_precision([Event(0.0, 1.0, "dog")], []) == 0.0
 
 
 def test_psds_lite_sweeps_thresholds() -> None:
