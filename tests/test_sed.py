@@ -8,6 +8,7 @@ from diapason.metrics.sed import (
     Event,
     event_based_f1,
     event_based_precision,
+    event_based_recall,
     parse_events,
     psds_lite,
     score_events,
@@ -84,6 +85,21 @@ def test_event_precision_perfect_detection_is_one() -> None:
 
 def test_event_precision_without_predictions_is_zero() -> None:
     assert event_based_precision([Event(0.0, 1.0, "dog")], []) == 0.0
+
+
+def test_event_recall_counts_missed_events() -> None:
+    ref = [Event(0.0, 1.0, "dog"), Event(2.0, 3.0, "cat")]
+    pred = [Event(0.0, 1.0, "dog")]
+    assert event_based_recall(ref, pred) == 0.5
+
+
+def test_event_recall_perfect_detection_is_one() -> None:
+    ref = [Event(0.0, 1.0, "dog")]
+    assert event_based_recall(ref, [Event(0.0, 1.0, "dog")]) == 1.0
+
+
+def test_event_recall_without_references_is_zero() -> None:
+    assert event_based_recall([], [Event(0.0, 1.0, "dog")]) == 0.0
 
 
 def test_psds_lite_sweeps_thresholds() -> None:
