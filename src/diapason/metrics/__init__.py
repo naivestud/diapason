@@ -15,7 +15,7 @@ from diapason.metrics.aggregate import (
     median,
 )
 from diapason.metrics.asr import cer, normalize_text, wer
-from diapason.metrics.qa import exact_match, token_f1
+from diapason.metrics.qa import exact_match, rouge_l, token_f1
 from diapason.metrics.sed import (
     Event,
     event_based_f1,
@@ -41,6 +41,7 @@ __all__ = [
     "normalize_text",
     "parse_events",
     "psds_lite",
+    "rouge_l",
     "score_events",
     "token_f1",
     "wer",

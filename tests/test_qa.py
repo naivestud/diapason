@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from diapason.metrics.qa import exact_match, token_f1
+from diapason.metrics.qa import exact_match, rouge_l, token_f1
 
 
 def test_exact_match_identical() -> None:
@@ -42,3 +42,30 @@ def test_token_f1_empty_prediction_is_zero() -> None:
 
 def test_token_f1_normalize() -> None:
     assert token_f1("The Dog.", "the dog", normalize=True) == 1.0
+
+
+def test_rouge_l_identical() -> None:
+    assert rouge_l("the dog barks", "the dog barks") == 1.0
+
+
+def test_rouge_l_partial_overlap() -> None:
+    # LCS = 2 (dog barks); precision = 2/2, recall = 2/3 -> F1 = 0.8
+    assert rouge_l("the dog barks", "dog barks") == pytest.approx(0.8)
+
+
+def test_rouge_l_penalizes_wrong_order() -> None:
+    # token F1 is perfect here, but the LCS is a single token
+    assert token_f1("a b c", "c b a") == 1.0
+    assert rouge_l("a b c", "c b a") == pytest.approx(1 / 3)
+
+
+def test_rouge_l_no_overlap_is_zero() -> None:
+    assert rouge_l("cat", "dog") == 0.0
+
+
+def test_rouge_l_both_empty_is_one() -> None:
+    assert rouge_l("", "") == 1.0
+
+
+def test_rouge_l_normalize() -> None:
+    assert rouge_l("The Dog.", "the dog", normalize=True) == 1.0
