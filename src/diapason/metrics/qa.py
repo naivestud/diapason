@@ -1,12 +1,13 @@
 """Audio question answering metrics.
 
 AQA answers are short spans of text, so they are scored with string-level
-metrics: an exact match and a token-level F1 that tolerates small wording
-differences.
+metrics: an exact match, a token-level F1 that tolerates small wording
+differences, an order-sensitive ROUGE-L, and sentence-level BLEU.
 """
 
 from __future__ import annotations
 
+import math
 from collections import Counter
 
 from diapason.metrics._text import normalize_text
@@ -119,3 +120,74 @@ def rouge_l(
     precision = lcs / len(pred_tokens)
     recall = lcs / len(ref_tokens)
     return 2 * precision * recall / (precision + recall)
+
+
+def _ngrams(tokens: list[str], order: int) -> Counter[tuple[str, ...]]:
+    """Count the ``order``-grams of a token list."""
+    return Counter(tuple(tokens[index : index + order]) for index in range(len(tokens) - order + 1))
+
+
+def _modified_precision(ref_tokens: list[str], pred_tokens: list[str], order: int) -> float | None:
+    """Clipped n-gram precision of ``pred_tokens`` against ``ref_tokens``.
+
+    Returns ``None`` when the prediction has no n-grams of this order, which
+    happens when it is shorter than ``order`` tokens; callers skip such orders.
+    """
+    pred_ngrams = _ngrams(pred_tokens, order)
+    if not pred_ngrams:
+        return None
+    ref_ngrams = _ngrams(ref_tokens, order)
+    clipped = sum(min(count, ref_ngrams[ngram]) for ngram, count in pred_ngrams.items())
+    return clipped / sum(pred_ngrams.values())
+
+
+@metrics.register("bleu")
+def bleu(
+    reference: str,
+    prediction: str,
+    *,
+    max_order: int = 4,
+    normalize: bool = False,
+    **options: object,
+) -> float:
+    """Sentence-level BLEU between prediction and reference.
+
+    Combines modified n-gram precision up to ``max_order`` with a brevity
+    penalty that discourages very short answers. N-gram orders longer than the
+    prediction are skipped, so short answers are still scored.
+
+    Args:
+        reference: Ground-truth answer.
+        prediction: Model answer to score.
+        max_order: Largest n-gram order to use; must be positive.
+        normalize: When true, lowercase and strip punctuation before scoring.
+
+    Returns:
+        BLEU in ``[0, 1]``. Two empty answers score ``1.0``; an empty answer
+        against a non-empty reference scores ``0.0``.
+    """
+    if max_order <= 0:
+        raise ValueError(f"max_order must be positive, got {max_order}")
+    if normalize:
+        reference = normalize_text(reference)
+        prediction = normalize_text(prediction)
+    ref_tokens = _tokens(reference)
+    pred_tokens = _tokens(prediction)
+    if not ref_tokens and not pred_tokens:
+        return 1.0
+    if not ref_tokens or not pred_tokens:
+        return 0.0
+
+    precisions = [
+        precision
+        for order in range(1, max_order + 1)
+        if (precision := _modified_precision(ref_tokens, pred_tokens, order)) is not None
+    ]
+    if not precisions or any(precision == 0.0 for precision in precisions):
+        return 0.0
+    log_average = sum(math.log(precision) for precision in precisions) / len(precisions)
+
+    brevity_penalty = 1.0
+    if len(pred_tokens) < len(ref_tokens):
+        brevity_penalty = math.exp(1 - len(ref_tokens) / len(pred_tokens))
+    return brevity_penalty * math.exp(log_average)

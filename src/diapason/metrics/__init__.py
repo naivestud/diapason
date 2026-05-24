@@ -15,7 +15,7 @@ from diapason.metrics.aggregate import (
     median,
 )
 from diapason.metrics.asr import cer, normalize_text, wer
-from diapason.metrics.qa import exact_match, rouge_l, token_f1
+from diapason.metrics.qa import bleu, exact_match, rouge_l, token_f1
 from diapason.metrics.sed import (
     Event,
     event_based_f1,
@@ -31,6 +31,7 @@ __all__ = [
     "Event",
     "aggregate_examples",
     "aggregate_tasks",
+    "bleu",
     "cer",
     "event_based_f1",
     "event_based_precision",

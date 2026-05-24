@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import math
+
 import pytest
 
-from diapason.metrics.qa import exact_match, rouge_l, token_f1
+from diapason.metrics.qa import bleu, exact_match, rouge_l, token_f1
 
 
 def test_exact_match_identical() -> None:
@@ -69,3 +71,40 @@ def test_rouge_l_both_empty_is_one() -> None:
 
 def test_rouge_l_normalize() -> None:
     assert rouge_l("The Dog.", "the dog", normalize=True) == 1.0
+
+
+def test_bleu_identical() -> None:
+    assert bleu("the dog barks loudly", "the dog barks loudly") == pytest.approx(1.0)
+
+
+def test_bleu_no_overlap_is_zero() -> None:
+    assert bleu("the cat", "a dog") == 0.0
+
+
+def test_bleu_applies_brevity_penalty() -> None:
+    # All precisions are 1.0; only the brevity penalty (exp(1 - 4/3)) applies.
+    expected = math.exp(1 - 4 / 3)
+    assert bleu("the dog barks loudly", "the dog barks") == pytest.approx(expected)
+
+
+def test_bleu_short_prediction_skips_high_orders() -> None:
+    # A one-token answer can only score unigram precision, so only the
+    # brevity penalty (exp(1 - 2/1)) reduces the score.
+    assert bleu("a dog", "a") == pytest.approx(math.exp(1 - 2 / 1))
+
+
+def test_bleu_both_empty_is_one() -> None:
+    assert bleu("", "") == 1.0
+
+
+def test_bleu_empty_prediction_is_zero() -> None:
+    assert bleu("an answer", "") == 0.0
+
+
+def test_bleu_normalize() -> None:
+    assert bleu("The Dog.", "the dog", normalize=True) == pytest.approx(1.0)
+
+
+def test_bleu_rejects_nonpositive_order() -> None:
+    with pytest.raises(ValueError, match="max_order"):
+        bleu("a", "a", max_order=0)
