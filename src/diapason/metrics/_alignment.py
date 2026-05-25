@@ -3,7 +3,8 @@
 This is a standard Levenshtein dynamic program that, instead of returning only
 the scalar distance, keeps track of how many substitutions, insertions and
 deletions make up the optimal edit script. Those counts are what WER and CER
-report.
+report. The program rolls two rows instead of materialising the full table, so
+memory stays linear in the hypothesis length.
 """
 
 from __future__ import annotations
@@ -48,26 +49,24 @@ def align_sequences(reference: Sequence[Hashable], hypothesis: Sequence[Hashable
     n = len(reference)
     m = len(hypothesis)
 
-    # table[i][j] holds (substitutions, insertions, deletions) for aligning
-    # reference[:i] with hypothesis[:j].
-    table: list[list[tuple[int, int, int]]] = [[(0, 0, 0)] * (m + 1) for _ in range(n + 1)]
-    for i in range(1, n + 1):
-        table[i][0] = (0, 0, i)  # i deletions
-    for j in range(1, m + 1):
-        table[0][j] = (0, j, 0)  # j insertions
-
+    # Only the previous row of the dynamic program is needed to compute the
+    # next one, so keep two rows instead of the full (n + 1) x (m + 1) table.
+    # Each cell holds (substitutions, insertions, deletions).
+    previous: list[tuple[int, int, int]] = [(0, j, 0) for j in range(m + 1)]
     for i in range(1, n + 1):
         ref_token = reference[i - 1]
+        current: list[tuple[int, int, int]] = [(0, 0, i)]  # i deletions
         for j in range(1, m + 1):
             if ref_token == hypothesis[j - 1]:
-                table[i][j] = table[i - 1][j - 1]
+                current.append(previous[j - 1])
             else:
-                substitute = _bump(table[i - 1][j - 1], index=0)
-                insert = _bump(table[i][j - 1], index=1)
-                delete = _bump(table[i - 1][j], index=2)
-                table[i][j] = min(substitute, insert, delete, key=sum)
+                substitute = _bump(previous[j - 1], index=0)
+                insert = _bump(current[j - 1], index=1)
+                delete = _bump(previous[j], index=2)
+                current.append(min(substitute, insert, delete, key=sum))
+        previous = current
 
-    substitutions, insertions, deletions = table[n][m]
+    substitutions, insertions, deletions = previous[m]
     hits = n - substitutions - deletions
     return Alignment(
         hits=hits,
