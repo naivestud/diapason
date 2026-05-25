@@ -44,3 +44,34 @@ def test_empty_reference_inserts_everything() -> None:
     alignment = align_sequences([], ["a", "b", "c"])
     assert alignment.insertions == 3
     assert alignment.distance == 3
+
+
+def test_mixed_edits_are_counted() -> None:
+    # "a b c" -> "x b c y": substitute a->x, insert y
+    alignment = align_sequences(["a", "b", "c"], ["x", "b", "c", "y"])
+    assert alignment.substitutions == 1
+    assert alignment.insertions == 1
+    assert alignment.deletions == 0
+    assert alignment.hits == 2
+    assert alignment.distance == 2
+
+
+def test_distance_is_symmetric() -> None:
+    pairs = [
+        (["the", "cat", "sat"], ["the", "dog", "sat"]),
+        (["a", "b"], ["b", "a"]),
+        (["a"], ["a", "b", "c"]),
+        ([], ["x", "y"]),
+    ]
+    for reference, hypothesis in pairs:
+        forward = align_sequences(reference, hypothesis)
+        backward = align_sequences(hypothesis, reference)
+        assert forward.distance == backward.distance
+
+
+def test_operation_counts_are_consistent() -> None:
+    alignment = align_sequences(["a", "b", "c", "d"], ["a", "x", "y", "d", "e"])
+    assert alignment.distance == (
+        alignment.substitutions + alignment.insertions + alignment.deletions
+    )
+    assert alignment.hits == 4 - alignment.substitutions - alignment.deletions
