@@ -8,12 +8,21 @@ length. They differ only in the token the edit distance is computed over.
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
+from dataclasses import dataclass
 
 from diapason.metrics._alignment import Alignment, align_sequences
 from diapason.metrics._text import normalize_text
 from diapason.registry import metrics
 
-__all__ = ["cer", "normalize_text", "process_characters", "process_words", "wer"]
+__all__ = [
+    "WerBreakdown",
+    "cer",
+    "normalize_text",
+    "process_characters",
+    "process_words",
+    "wer",
+    "wer_breakdown",
+]
 
 
 def _split_words(text: str) -> list[str]:
@@ -24,6 +33,29 @@ def _split_words(text: str) -> list[str]:
 def _split_chars(text: str) -> list[str]:
     """Split text into character tokens, dropping whitespace."""
     return [char for char in text if not char.isspace()]
+
+
+@dataclass(frozen=True)
+class WerBreakdown:
+    """Word error rate split by edit operation.
+
+    Each rate is the count of that operation divided by the number of
+    reference words, so ``total`` equals the word error rate.
+
+    Attributes:
+        substitutions: Rate of reference words replaced by a different word.
+        insertions: Rate of extra hypothesis words.
+        deletions: Rate of reference words missing from the hypothesis.
+    """
+
+    substitutions: float
+    insertions: float
+    deletions: float
+
+    @property
+    def total(self) -> float:
+        """The overall word error rate these rates decompose into."""
+        return self.substitutions + self.insertions + self.deletions
 
 
 def process_words(reference: str, hypothesis: str) -> Alignment:
@@ -88,6 +120,38 @@ def _wer_single(reference: str, hypothesis: str, *, normalize: bool) -> float:
             raise ValueError("cannot score a hypothesis against an empty reference")
         return 0.0
     return alignment.distance / num_reference_words
+
+
+def wer_breakdown(reference: str, hypothesis: str, *, normalize: bool = False) -> WerBreakdown:
+    """Decompose the word error rate into substitution, insertion and deletion.
+
+    Useful for diagnosing *how* a model errs rather than just how much: a
+    deletion-heavy score suggests dropped words, an insertion-heavy one
+    suggests hallucinated words.
+
+    Args:
+        reference: Ground-truth transcription; must contain at least one word.
+        hypothesis: Model transcription to score.
+        normalize: When true, lowercase and strip punctuation before scoring.
+
+    Returns:
+        A :class:`WerBreakdown` whose ``total`` equals :func:`wer`.
+
+    Raises:
+        ValueError: If the reference contains no words.
+    """
+    if normalize:
+        reference = normalize_text(reference)
+        hypothesis = normalize_text(hypothesis)
+    alignment = process_words(reference, hypothesis)
+    num_reference_words = len(_split_words(reference))
+    if num_reference_words == 0:
+        raise ValueError("cannot score a hypothesis against an empty reference")
+    return WerBreakdown(
+        substitutions=alignment.substitutions / num_reference_words,
+        insertions=alignment.insertions / num_reference_words,
+        deletions=alignment.deletions / num_reference_words,
+    )
 
 
 @metrics.register("cer")

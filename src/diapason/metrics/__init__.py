@@ -14,7 +14,7 @@ from diapason.metrics.aggregate import (
     mean,
     median,
 )
-from diapason.metrics.asr import cer, normalize_text, wer
+from diapason.metrics.asr import WerBreakdown, cer, normalize_text, wer, wer_breakdown
 from diapason.metrics.qa import bleu, exact_match, rouge_l, token_f1
 from diapason.metrics.sed import (
     Event,
@@ -29,6 +29,7 @@ from diapason.metrics.sed import (
 __all__ = [
     "AGGREGATION_METHODS",
     "Event",
+    "WerBreakdown",
     "aggregate_examples",
     "aggregate_tasks",
     "bleu",
@@ -46,4 +47,5 @@ __all__ = [
     "score_events",
     "token_f1",
     "wer",
+    "wer_breakdown",
 ]

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from diapason.metrics.asr import cer, normalize_text, wer
+from diapason.metrics.asr import cer, normalize_text, wer, wer_breakdown
 
 
 def test_wer_perfect_match_is_zero() -> None:
@@ -81,3 +81,38 @@ def test_wer_empty_reference_list_raises() -> None:
 
 def test_cer_multi_reference() -> None:
     assert cer(["abc", "xyz"], "xyz") == 0.0
+
+
+def test_wer_breakdown_matches_wer() -> None:
+    breakdown = wer_breakdown("the cat sat down", "the dog sat")
+    assert breakdown.total == pytest.approx(wer("the cat sat down", "the dog sat"))
+
+
+def test_wer_breakdown_separates_operations() -> None:
+    # "the cat sat down" -> "dog cat sat": substitute the->dog, delete down
+    breakdown = wer_breakdown("the cat sat down", "dog cat sat")
+    assert breakdown.substitutions == pytest.approx(0.25)
+    assert breakdown.deletions == pytest.approx(0.25)
+    assert breakdown.insertions == 0.0
+
+
+def test_wer_breakdown_insertions() -> None:
+    breakdown = wer_breakdown("the cat", "the big fat cat")
+    assert breakdown.insertions == pytest.approx(1.0)
+    assert breakdown.substitutions == 0.0
+    assert breakdown.deletions == 0.0
+
+
+def test_wer_breakdown_perfect_is_all_zero() -> None:
+    breakdown = wer_breakdown("the cat sat", "the cat sat")
+    assert breakdown.total == 0.0
+
+
+def test_wer_breakdown_normalize() -> None:
+    breakdown = wer_breakdown("Hello World", "hello world", normalize=True)
+    assert breakdown.total == 0.0
+
+
+def test_wer_breakdown_empty_reference_raises() -> None:
+    with pytest.raises(ValueError, match="empty reference"):
+        wer_breakdown("", "hello")
