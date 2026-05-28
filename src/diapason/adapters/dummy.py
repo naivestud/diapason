@@ -5,10 +5,14 @@ something that produces predictions without any model at all, so the dummy
 adapter derives its answer from the reference annotation. With no corruption
 it simply echoes the reference (a perfect score); turning up ``corruption``
 deterministically drops words so the score degrades in a reproducible way.
+Passing ``seed`` switches the word dropping from a fixed stride pattern to a
+seeded pseudo-random choice, which feels less artificial in reports while
+staying fully reproducible.
 """
 
 from __future__ import annotations
 
+import random
 from typing import TYPE_CHECKING, Any
 
 from diapason.adapters.base import ModelAdapter
@@ -24,11 +28,12 @@ class DummyAdapter(ModelAdapter):
 
     name = "dummy"
 
-    def __init__(self, corruption: float = 0.0, **options: Any) -> None:
-        super().__init__(corruption=corruption, **options)
+    def __init__(self, corruption: float = 0.0, seed: int | None = None, **options: Any) -> None:
+        super().__init__(corruption=corruption, seed=seed, **options)
         if not 0.0 <= corruption <= 1.0:
             raise ValueError(f"corruption must be within [0, 1], got {corruption}")
         self.corruption = corruption
+        self.seed = seed
 
     def predict(self, example: Example) -> str:
         """Return the reference text, dropping words when corrupted."""
@@ -36,6 +41,20 @@ class DummyAdapter(ModelAdapter):
         if self.corruption <= 0.0 or not text:
             return text
         words = text.split()
+        if self.seed is None:
+            return self._drop_by_stride(words)
+        return self._drop_by_seed(words, text)
+
+    def _drop_by_stride(self, words: list[str]) -> str:
+        """Drop every ``step``-th word for a fixed stride derived from corruption."""
         step = max(1, round(1.0 / self.corruption))
         kept = [word for index, word in enumerate(words) if index % step != step - 1]
+        return " ".join(kept)
+
+    def _drop_by_seed(self, words: list[str], text: str) -> str:
+        """Drop a pseudo-random selection of words determined by the seed and text."""
+        rng = random.Random(f"{self.seed}|{text}")
+        num_dropped = min(round(self.corruption * len(words)), len(words))
+        dropped = set(rng.sample(range(len(words)), num_dropped))
+        kept = [word for index, word in enumerate(words) if index not in dropped]
         return " ".join(kept)
