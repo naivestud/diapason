@@ -36,6 +36,25 @@ def test_build_request_without_audio() -> None:
     assert content[0]["type"] == "text"
 
 
+def test_build_request_prepends_system_prompt() -> None:
+    example = Example(id="1", prompt="What is this sound?")
+    request = build_chat_request(example, model="m", system_prompt="Answer concisely.")
+    assert request["messages"][0] == {"role": "system", "content": "Answer concisely."}
+    assert request["messages"][1]["role"] == "user"
+
+
+def test_build_request_omits_system_message_by_default() -> None:
+    example = Example(id="1", prompt="What is this sound?")
+    request = build_chat_request(example, model="m")
+    assert len(request["messages"]) == 1
+    assert request["messages"][0]["role"] == "user"
+
+
+def test_adapter_passes_system_prompt() -> None:
+    adapter = HttpAdapter(base_url="https://api.example.com", system_prompt="Be brief.")
+    assert adapter.system_prompt == "Be brief."
+
+
 def test_extract_answer_reads_content() -> None:
     response = {"choices": [{"message": {"content": "a dog barking"}}]}
     assert extract_answer(response) == "a dog barking"

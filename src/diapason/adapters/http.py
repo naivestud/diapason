@@ -22,7 +22,12 @@ if TYPE_CHECKING:
 
 
 def build_chat_request(
-    example: Example, *, model: str, max_tokens: int = 256, temperature: float = 0.0
+    example: Example,
+    *,
+    model: str,
+    max_tokens: int = 256,
+    temperature: float = 0.0,
+    system_prompt: str = "",
 ) -> dict[str, Any]:
     """Build an OpenAI-style chat completion body for one example.
 
@@ -31,6 +36,8 @@ def build_chat_request(
         model: Model identifier to pass to the endpoint.
         max_tokens: Cap on the generated answer length.
         temperature: Sampling temperature; ``0.0`` for deterministic output.
+        system_prompt: Optional system message prepended to the conversation,
+            e.g. to instruct the model to answer as concisely as possible.
 
     Returns:
         A JSON-serializable request body.
@@ -39,11 +46,15 @@ def build_chat_request(
     if example.audio:
         content.append({"type": "input_audio", "input_audio": {"path": example.audio}})
     content.append({"type": "text", "text": example.prompt or "Describe the audio."})
+    messages: list[dict[str, Any]] = []
+    if system_prompt:
+        messages.append({"role": "system", "content": system_prompt})
+    messages.append({"role": "user", "content": content})
     return {
         "model": model,
         "max_tokens": max_tokens,
         "temperature": temperature,
-        "messages": [{"role": "user", "content": content}],
+        "messages": messages,
     }
 
 
@@ -80,6 +91,7 @@ class HttpAdapter(ModelAdapter):
         temperature: float = 0.0,
         timeout: float = 30.0,
         max_retries: int = 3,
+        system_prompt: str = "",
         **options: Any,
     ) -> None:
         super().__init__(
@@ -90,6 +102,7 @@ class HttpAdapter(ModelAdapter):
             temperature=temperature,
             timeout=timeout,
             max_retries=max_retries,
+            system_prompt=system_prompt,
             **options,
         )
         if not base_url:
@@ -101,6 +114,7 @@ class HttpAdapter(ModelAdapter):
         self.temperature = temperature
         self.timeout = timeout
         self.max_retries = max_retries
+        self.system_prompt = system_prompt
 
     def predict(self, example: Example) -> str:
         """Send the example to the endpoint and return the assistant answer."""
@@ -109,6 +123,7 @@ class HttpAdapter(ModelAdapter):
             model=self.model,
             max_tokens=self.max_tokens,
             temperature=self.temperature,
+            system_prompt=self.system_prompt,
         )
         response = self._post(payload)
         return extract_answer(response)
