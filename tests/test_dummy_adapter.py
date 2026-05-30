@@ -35,3 +35,28 @@ def test_corruption_out_of_range_raises() -> None:
 
 def test_dummy_is_registered() -> None:
     assert "dummy" in adapters.names()
+
+
+def test_seeded_corruption_is_reproducible() -> None:
+    first = DummyAdapter(corruption=0.5, seed=7)
+    second = DummyAdapter(corruption=0.5, seed=7)
+    example = _example("the quick brown fox jumps over the lazy dog")
+    assert first.predict(example) == second.predict(example)
+
+
+def test_seeded_corruption_varies_with_seed() -> None:
+    example = _example("the quick brown fox jumps over the lazy dog")
+    outputs = {DummyAdapter(corruption=0.25, seed=seed).predict(example) for seed in range(5)}
+    assert len(outputs) > 1
+
+
+def test_seeded_corruption_drops_expected_count() -> None:
+    adapter = DummyAdapter(corruption=0.25, seed=1)
+    words = ["the", "quick", "brown", "fox", "jumps", "over", "the", "lazy", "dog"]
+    kept = adapter.predict(_example(" ".join(words)))
+    assert len(kept.split()) == len(words) - round(0.25 * len(words))
+
+
+def test_seed_is_ignored_without_corruption() -> None:
+    adapter = DummyAdapter(corruption=0.0, seed=3)
+    assert adapter.predict(_example("the cat sat")) == "the cat sat"
