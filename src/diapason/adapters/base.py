@@ -14,6 +14,10 @@ if TYPE_CHECKING:
     from diapason.datasets.manifest import Example
 
 
+class AdapterError(RuntimeError):
+    """Raised when an adapter cannot produce a prediction for an example."""
+
+
 class ModelAdapter(ABC):
     """Produces text predictions one example at a time.
 

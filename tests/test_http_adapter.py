@@ -6,8 +6,13 @@ network access is needed.
 
 from __future__ import annotations
 
+import json
+import urllib.error
+import urllib.request
+
 import pytest
 
+from diapason.adapters.base import AdapterError
 from diapason.adapters.http import HttpAdapter, build_chat_request, extract_answer
 from diapason.datasets.manifest import Example
 
@@ -78,3 +83,61 @@ def test_adapter_strips_trailing_slash() -> None:
 def test_backoff_is_exponential() -> None:
     assert HttpAdapter._backoff_delay(0) == 1.0
     assert HttpAdapter._backoff_delay(2) == 4.0
+
+
+class _FakeResponse:
+    def __init__(self, payload: dict[str, object]) -> None:
+        self._payload = payload
+
+    def read(self) -> bytes:
+        return json.dumps(self._payload).encode("utf-8")
+
+    def __enter__(self) -> _FakeResponse:
+        return self
+
+    def __exit__(self, *exc_info: object) -> None:
+        return None
+
+
+def _chat_response(answer: str) -> dict[str, object]:
+    return {"choices": [{"message": {"content": answer}}]}
+
+
+def test_predict_posts_and_parses_answer(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: list[str] = []
+
+    def fake_urlopen(request: urllib.request.Request, timeout: float) -> _FakeResponse:
+        seen.append(request.get_full_url())
+        return _FakeResponse(_chat_response("a dog"))
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    adapter = HttpAdapter(base_url="https://api.example.com/v1", model="m")
+    assert adapter.predict(Example(id="1", prompt="?")) == "a dog"
+    assert seen == ["https://api.example.com/v1/chat/completions"]
+
+
+def test_predict_retries_on_transient_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls = {"count": 0}
+
+    def flaky_urlopen(request: urllib.request.Request, timeout: float) -> _FakeResponse:
+        calls["count"] += 1
+        if calls["count"] < 3:
+            raise urllib.error.URLError("boom")
+        return _FakeResponse(_chat_response("a cat"))
+
+    monkeypatch.setattr(urllib.request, "urlopen", flaky_urlopen)
+    monkeypatch.setattr("diapason.adapters.http.time.sleep", lambda _seconds: None)
+    adapter = HttpAdapter(base_url="https://api.example.com", max_retries=3)
+    assert adapter.predict(Example(id="1")) == "a cat"
+    assert calls["count"] == 3
+
+
+def test_predict_raises_adapter_error_after_retries(monkeypatch: pytest.MonkeyPatch) -> None:
+    def failing_urlopen(request: urllib.request.Request, timeout: float) -> _FakeResponse:
+        raise urllib.error.URLError("down")
+
+    monkeypatch.setattr(urllib.request, "urlopen", failing_urlopen)
+    monkeypatch.setattr("diapason.adapters.http.time.sleep", lambda _seconds: None)
+    adapter = HttpAdapter(base_url="https://api.example.com", max_retries=2)
+    with pytest.raises(AdapterError, match="failed after 2 attempts"):
+        adapter.predict(Example(id="1"))

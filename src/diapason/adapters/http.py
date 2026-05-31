@@ -14,7 +14,7 @@ import urllib.error
 import urllib.request
 from typing import TYPE_CHECKING, Any, cast
 
-from diapason.adapters.base import ModelAdapter
+from diapason.adapters.base import AdapterError, ModelAdapter
 from diapason.registry import adapters
 
 if TYPE_CHECKING:
@@ -147,7 +147,7 @@ class HttpAdapter(ModelAdapter):
                 if attempt < self.max_retries - 1:
                     time.sleep(self._backoff_delay(attempt))
         attempts = self.max_retries
-        raise RuntimeError(
+        raise AdapterError(
             f"chat completions request failed after {attempts} attempts"
         ) from last_error
 

@@ -7,10 +7,17 @@ configs by name.
 
 from __future__ import annotations
 
-from diapason.adapters.base import ModelAdapter
+from diapason.adapters.base import AdapterError, ModelAdapter
 from diapason.adapters.constant import ConstantAdapter
 from diapason.adapters.dummy import DummyAdapter
 from diapason.adapters.file import FileAdapter
 from diapason.adapters.http import HttpAdapter
 
-__all__ = ["ConstantAdapter", "DummyAdapter", "FileAdapter", "HttpAdapter", "ModelAdapter"]
+__all__ = [
+    "AdapterError",
+    "ConstantAdapter",
+    "DummyAdapter",
+    "FileAdapter",
+    "HttpAdapter",
+    "ModelAdapter",
+]
