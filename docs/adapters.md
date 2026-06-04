@@ -52,8 +52,7 @@ The decorator form is equivalent and more common:
 
 ```python
 @adapters.register("echo_upper")
-class EchoUpperAdapter(ModelAdapter):
-    ...
+class EchoUpperAdapter(ModelAdapter): ...
 ```
 
 Registration happens at import time, so make sure the module defining the

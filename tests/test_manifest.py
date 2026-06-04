@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import gzip
 from pathlib import Path
 
 import pytest
@@ -81,3 +82,11 @@ def test_extra_fields_land_in_meta(tmp_path: Path) -> None:
     path = _write(tmp_path, ['{"id": "1", "reference": "x", "speaker": "spk1"}'])
     example = load_manifest(path, "asr")[0]
     assert example.meta["speaker"] == "spk1"
+
+
+def test_gzip_manifest_is_read_transparently(tmp_path: Path) -> None:
+    path = tmp_path / "manifest.jsonl.gz"
+    with gzip.open(path, "wt", encoding="utf-8") as handle:
+        handle.write('{"id": "1", "reference": "the cat sat"}\n')
+    example = load_manifest(path, "asr")[0]
+    assert example.reference_text == "the cat sat"

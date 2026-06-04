@@ -9,6 +9,7 @@ file; when they are absent an adapter generates them at run time.
 
 from __future__ import annotations
 
+import gzip
 import json
 from collections.abc import Mapping
 from dataclasses import dataclass, field
@@ -21,6 +22,14 @@ from diapason.metrics.sed import Event, parse_events
 
 class ManifestError(ValueError):
     """Raised when a manifest cannot be read or is malformed."""
+
+
+def _read_text(path: Path) -> str:
+    """Read a manifest file, transparently decompressing ``*.gz`` files."""
+    if path.suffix == ".gz":
+        with gzip.open(path, "rt", encoding="utf-8") as handle:
+            return handle.read()
+    return path.read_text(encoding="utf-8")
 
 
 @dataclass(frozen=True)
@@ -42,7 +51,8 @@ def load_manifest(path: str | Path, task_type: str) -> list[Example]:
     """Read a JSONL manifest into a list of examples.
 
     Args:
-        path: Path to a ``*.jsonl`` manifest.
+        path: Path to a ``*.jsonl`` manifest. A ``*.jsonl.gz`` file is read
+            transparently as gzip-compressed JSONL.
         task_type: One of ``asr``, ``sed`` or ``aqa``; controls how the
             reference and prediction fields are interpreted.
 
@@ -56,7 +66,7 @@ def load_manifest(path: str | Path, task_type: str) -> list[Example]:
     if task_type not in TASK_TYPES:
         raise ManifestError(f"unknown task type '{task_type}'")
     examples: list[Example] = []
-    text = Path(path).read_text(encoding="utf-8")
+    text = _read_text(Path(path))
     for line_number, line in enumerate(text.splitlines(), start=1):
         line = line.strip()
         if not line:
