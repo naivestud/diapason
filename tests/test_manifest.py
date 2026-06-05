@@ -90,3 +90,15 @@ def test_gzip_manifest_is_read_transparently(tmp_path: Path) -> None:
         handle.write('{"id": "1", "reference": "the cat sat"}\n')
     example = load_manifest(path, "asr")[0]
     assert example.reference_text == "the cat sat"
+
+
+def test_duplicate_example_ids_raise(tmp_path: Path) -> None:
+    path = _write(
+        tmp_path,
+        [
+            '{"id": "1", "reference": "a"}',
+            '{"id": "1", "reference": "b"}',
+        ],
+    )
+    with pytest.raises(ManifestError, match="duplicate example id"):
+        load_manifest(path, "asr")

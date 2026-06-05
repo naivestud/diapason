@@ -60,12 +60,14 @@ def load_manifest(path: str | Path, task_type: str) -> list[Example]:
         The parsed examples, in file order.
 
     Raises:
-        ManifestError: If the file is empty, a line is not valid JSON, or an
-            example is missing a field its task type requires.
+        ManifestError: If the file is empty, a line is not valid JSON, an
+            example is missing a field its task type requires, or two examples
+            share an id.
     """
     if task_type not in TASK_TYPES:
         raise ManifestError(f"unknown task type '{task_type}'")
     examples: list[Example] = []
+    seen_ids: set[str] = set()
     text = _read_text(Path(path))
     for line_number, line in enumerate(text.splitlines(), start=1):
         line = line.strip()
@@ -81,6 +83,9 @@ def load_manifest(path: str | Path, task_type: str) -> list[Example]:
             example = _parse_row(dict(row), task_type)
         except ValueError as exc:
             raise ManifestError(f"{path}:{line_number}: {exc}") from exc
+        if example.id in seen_ids:
+            raise ManifestError(f"{path}:{line_number}: duplicate example id '{example.id}'")
+        seen_ids.add(example.id)
         _validate(example, task_type, line_number)
         examples.append(example)
     if not examples:
