@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from diapason.config import ConfigError, load_suite
+from diapason.config import ConfigError, SuiteConfig, TaskConfig, dump_suite, load_suite
 
 
 def _write(tmp_path: Path, text: str) -> Path:
@@ -137,3 +137,35 @@ def test_non_mapping_document_raises(tmp_path: Path) -> None:
     path = _write(tmp_path, "- just\n- a\n- list\n")
     with pytest.raises(ConfigError, match="mapping"):
         load_suite(path)
+
+
+def test_dump_suite_round_trips(tmp_path: Path) -> None:
+    suite = SuiteConfig(
+        name="generated",
+        description="made in code",
+        tasks=(
+            TaskConfig(
+                name="asr_task",
+                type="asr",
+                manifest="data.jsonl",
+                adapter="dummy",
+                adapter_options={"corruption": 0.2},
+                metrics=("wer", "cer"),
+                metric_options={"normalize": True},
+                aggregate="median",
+            ),
+        ),
+    )
+    path = tmp_path / "suite.yaml"
+    path.write_text(dump_suite(suite), encoding="utf-8")
+    assert load_suite(path) == suite
+
+
+def test_dump_suite_omits_defaults(tmp_path: Path) -> None:
+    suite = SuiteConfig(
+        name="minimal", tasks=(TaskConfig(name="t", type="asr", manifest="m.jsonl"),)
+    )
+    text = dump_suite(suite)
+    assert "adapter" not in text
+    assert "aggregate" not in text
+    assert load_suite(_write(tmp_path, text)) == suite

@@ -111,6 +111,44 @@ def validate_suite(suite: SuiteConfig) -> None:
             )
 
 
+def dump_suite(suite: SuiteConfig) -> str:
+    """Serialize a suite definition back to a YAML document.
+
+    This is the inverse of :func:`load_suite`: ``load_suite`` of the returned
+    text yields an equivalent suite. Useful for generating suite configs
+    programmatically.
+
+    Args:
+        suite: The suite to serialize.
+
+    Returns:
+        A YAML document string with a trailing newline.
+    """
+    document: dict[str, Any] = {
+        "suite": suite.name,
+        "tasks": [_task_to_dict(t) for t in suite.tasks],
+    }
+    if suite.description:
+        document["description"] = suite.description
+    return yaml.safe_dump(document, sort_keys=False)
+
+
+def _task_to_dict(task: TaskConfig) -> dict[str, Any]:
+    """Convert a task back into the mapping shape load_suite understands."""
+    entry: dict[str, Any] = {"name": task.name, "type": task.type, "manifest": task.manifest}
+    if task.adapter != "dummy":
+        entry["adapter"] = task.adapter
+    if task.adapter_options:
+        entry["adapter_options"] = dict(task.adapter_options)
+    if task.metrics:
+        entry["metrics"] = list(task.metrics)
+    if task.metric_options:
+        entry["metric_options"] = dict(task.metric_options)
+    if task.aggregate != "mean":
+        entry["aggregate"] = task.aggregate
+    return entry
+
+
 def _build_suite(raw: dict[str, Any]) -> SuiteConfig:
     tasks = tuple(_build_task(entry) for entry in raw.get("tasks", []))
     return SuiteConfig(
