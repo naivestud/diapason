@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import gzip
 import json
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -47,8 +47,12 @@ class Example:
     meta: dict[str, object] = field(default_factory=dict)
 
 
-def load_manifest(path: str | Path, task_type: str) -> list[Example]:
-    """Read a JSONL manifest into a list of examples.
+def iter_manifest(path: str | Path, task_type: str) -> Iterator[Example]:
+    """Yield examples one at a time from a JSONL manifest.
+
+    This is the streaming primitive behind :func:`load_manifest`. It is useful
+    for very large manifests where materialising every example at once is
+    wasteful; validation and duplicate detection still happen per line.
 
     Args:
         path: Path to a ``*.jsonl`` manifest. A ``*.jsonl.gz`` file is read
@@ -56,17 +60,15 @@ def load_manifest(path: str | Path, task_type: str) -> list[Example]:
         task_type: One of ``asr``, ``sed`` or ``aqa``; controls how the
             reference and prediction fields are interpreted.
 
-    Returns:
-        The parsed examples, in file order.
+    Yields:
+        Each parsed example, in file order.
 
     Raises:
-        ManifestError: If the file is empty, a line is not valid JSON, an
-            example is missing a field its task type requires, or two examples
-            share an id.
+        ManifestError: If a line is not valid JSON, an example is missing a
+            field its task type requires, or two examples share an id.
     """
     if task_type not in TASK_TYPES:
         raise ManifestError(f"unknown task type '{task_type}'")
-    examples: list[Example] = []
     seen_ids: set[str] = set()
     text = _read_text(Path(path))
     for line_number, line in enumerate(text.splitlines(), start=1):
@@ -87,7 +89,27 @@ def load_manifest(path: str | Path, task_type: str) -> list[Example]:
             raise ManifestError(f"{path}:{line_number}: duplicate example id '{example.id}'")
         seen_ids.add(example.id)
         _validate(example, task_type, line_number)
-        examples.append(example)
+        yield example
+
+
+def load_manifest(path: str | Path, task_type: str) -> list[Example]:
+    """Read a JSONL manifest into a list of examples.
+
+    Args:
+        path: Path to a ``*.jsonl`` manifest. A ``*.jsonl.gz`` file is read
+            transparently as gzip-compressed JSONL.
+        task_type: One of ``asr``, ``sed`` or ``aqa``; controls how the
+            reference and prediction fields are interpreted.
+
+    Returns:
+        The parsed examples, in file order.
+
+    Raises:
+        ManifestError: If the file is empty, a line is not valid JSON, an
+            example is missing a field its task type requires, or two examples
+            share an id.
+    """
+    examples = list(iter_manifest(path, task_type))
     if not examples:
         raise ManifestError(f"manifest {path} contains no examples")
     return examples

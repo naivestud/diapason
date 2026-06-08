@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from diapason.datasets.manifest import ManifestError, load_manifest
+from diapason.datasets.manifest import ManifestError, iter_manifest, load_manifest
 
 
 def _write(tmp_path: Path, lines: list[str]) -> Path:
@@ -102,3 +102,25 @@ def test_duplicate_example_ids_raise(tmp_path: Path) -> None:
     )
     with pytest.raises(ManifestError, match="duplicate example id"):
         load_manifest(path, "asr")
+
+
+def test_iter_manifest_yields_examples_lazily(tmp_path: Path) -> None:
+    path = _write(
+        tmp_path,
+        ['{"id": "1", "reference": "a"}', '{"id": "2", "reference": "b"}'],
+    )
+    iterator = iter_manifest(path, "asr")
+    assert next(iterator).id == "1"
+    assert next(iterator).id == "2"
+    with pytest.raises(StopIteration):
+        next(iterator)
+
+
+def test_iter_manifest_matches_load_manifest(tmp_path: Path) -> None:
+    path = _write(
+        tmp_path,
+        ['{"id": "1", "reference": "a"}', '{"id": "2", "reference": "b"}'],
+    )
+    assert [example.id for example in iter_manifest(path, "asr")] == [
+        example.id for example in load_manifest(path, "asr")
+    ]
