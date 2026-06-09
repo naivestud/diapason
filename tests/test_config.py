@@ -139,6 +139,12 @@ def test_non_mapping_document_raises(tmp_path: Path) -> None:
         load_suite(path)
 
 
+def test_suite_without_tasks_raises(tmp_path: Path) -> None:
+    path = _write(tmp_path, "suite: empty\ntasks: []\n")
+    with pytest.raises(ConfigError, match="no tasks"):
+        load_suite(path)
+
+
 def test_dump_suite_round_trips(tmp_path: Path) -> None:
     suite = SuiteConfig(
         name="generated",

@@ -87,9 +87,12 @@ def validate_suite(suite: SuiteConfig) -> None:
         suite: The suite to validate.
 
     Raises:
-        ConfigError: If a task has an unknown type, an empty name or manifest,
-            or a name that collides with another task in the same suite.
+        ConfigError: If the suite has no tasks, or a task has an unknown type,
+            an empty name or manifest, or a name that collides with another
+            task in the same suite.
     """
+    if not suite.tasks:
+        raise ConfigError(f"suite '{suite.name}' has no tasks")
     seen: set[str] = set()
     for task in suite.tasks:
         if not task.name:
