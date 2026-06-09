@@ -15,6 +15,7 @@ from typing import Any
 import yaml
 
 from diapason.metrics.aggregate import AGGREGATION_METHODS
+from diapason.registry import Registry, RegistryError
 
 #: Task families understood by the harness.
 TASK_TYPES = ("asr", "sed", "aqa")
@@ -112,6 +113,38 @@ def validate_suite(suite: SuiteConfig) -> None:
                 f"task '{task.name}' has unknown aggregation method '{task.aggregate}' "
                 f"(expected one of {', '.join(AGGREGATION_METHODS)})"
             )
+
+
+def validate_components(
+    suite: SuiteConfig,
+    adapter_registry: Registry[Any],
+    metric_registry: Registry[Any],
+) -> None:
+    """Check that every adapter and metric named by the suite is registered.
+
+    This is a separate step from :func:`validate_suite` because it needs the
+    registries to be populated first: import :mod:`diapason.adapters` and
+    :mod:`diapason.metrics` (or your own component modules) before calling it.
+
+    Args:
+        suite: The suite to validate.
+        adapter_registry: Registry holding the available adapters.
+        metric_registry: Registry holding the available metrics.
+
+    Raises:
+        ConfigError: If a task names an adapter or metric that is not
+            registered. The message names the task and lists known names.
+    """
+    for task in suite.tasks:
+        try:
+            adapter_registry.get(task.adapter)
+        except RegistryError as exc:
+            raise ConfigError(f"task '{task.name}': {exc.args[0]}") from exc
+        for metric in task.metrics:
+            try:
+                metric_registry.get(metric)
+            except RegistryError as exc:
+                raise ConfigError(f"task '{task.name}': {exc.args[0]}") from exc
 
 
 def dump_suite(suite: SuiteConfig) -> str:

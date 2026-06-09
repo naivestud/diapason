@@ -6,7 +6,15 @@ from pathlib import Path
 
 import pytest
 
-from diapason.config import ConfigError, SuiteConfig, TaskConfig, dump_suite, load_suite
+from diapason.config import (
+    ConfigError,
+    SuiteConfig,
+    TaskConfig,
+    dump_suite,
+    load_suite,
+    validate_components,
+)
+from diapason.registry import Registry
 
 
 def _write(tmp_path: Path, text: str) -> Path:
@@ -143,6 +151,43 @@ def test_suite_without_tasks_raises(tmp_path: Path) -> None:
     path = _write(tmp_path, "suite: empty\ntasks: []\n")
     with pytest.raises(ConfigError, match="no tasks"):
         load_suite(path)
+
+
+def _registries() -> tuple[Registry[object], Registry[object]]:
+    adapter_registry: Registry[object] = Registry("adapter")
+    metric_registry: Registry[object] = Registry("metric")
+    adapter_registry.register("dummy")(object)
+    metric_registry.register("wer")(object)
+    return adapter_registry, metric_registry
+
+
+def test_validate_components_accepts_known_names() -> None:
+    suite = SuiteConfig(
+        name="s",
+        tasks=(TaskConfig(name="t", type="asr", manifest="m", adapter="dummy", metrics=("wer",)),),
+    )
+    adapter_registry, metric_registry = _registries()
+    validate_components(suite, adapter_registry, metric_registry)
+
+
+def test_validate_components_rejects_unknown_adapter() -> None:
+    suite = SuiteConfig(
+        name="s",
+        tasks=(TaskConfig(name="t", type="asr", manifest="m", adapter="missing"),),
+    )
+    adapter_registry, metric_registry = _registries()
+    with pytest.raises(ConfigError, match="task 't': unknown adapter: 'missing'"):
+        validate_components(suite, adapter_registry, metric_registry)
+
+
+def test_validate_components_rejects_unknown_metric() -> None:
+    suite = SuiteConfig(
+        name="s",
+        tasks=(TaskConfig(name="t", type="asr", manifest="m", metrics=("nope",)),),
+    )
+    adapter_registry, metric_registry = _registries()
+    with pytest.raises(ConfigError, match="task 't': unknown metric: 'nope'"):
+        validate_components(suite, adapter_registry, metric_registry)
 
 
 def test_dump_suite_round_trips(tmp_path: Path) -> None:
