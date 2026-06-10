@@ -18,7 +18,8 @@ from rich.table import Table
 
 import diapason.adapters
 import diapason.metrics  # noqa: F401  (registers built-in metrics)
-from diapason.config import discover_suites, load_suite
+from diapason.config import ConfigError, discover_suites, load_suite, validate_components
+from diapason.datasets.manifest import ManifestError, load_manifest
 from diapason.registry import adapters as adapter_registry
 from diapason.registry import metrics as metric_registry
 from diapason.report import (
@@ -29,7 +30,7 @@ from diapason.report import (
     write_json_report,
     write_markdown_report,
 )
-from diapason.runner import RunResult, TaskResult, run_suite
+from diapason.runner import RunResult, TaskResult, resolve_manifest_path, run_suite
 from diapason.version import __version__
 
 _console = Console()
@@ -110,6 +111,32 @@ def _write_reports(
     if fmt in ("md", "both"):
         write_markdown_report(result, destination / f"{suite_name}.md", metadata)
     return destination
+
+
+@main.command()
+@click.argument("config_path", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+def check(config_path: Path) -> None:
+    """Validate the suite in CONFIG_PATH without running it.
+
+    Checks the suite structure, that every adapter and metric name is
+    registered, and that every task's manifest exists and parses.
+    """
+    try:
+        suite = load_suite(config_path)
+        validate_components(suite, adapter_registry, metric_registry)
+    except ConfigError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    for task in suite.tasks:
+        manifest_path = resolve_manifest_path(task.manifest, config_path.parent)
+        if not manifest_path.is_file():
+            raise click.ClickException(f"task '{task.name}': manifest not found: {manifest_path}")
+        try:
+            examples = load_manifest(manifest_path, task.type)
+        except ManifestError as exc:
+            raise click.ClickException(f"task '{task.name}': {exc}") from exc
+        _console.print(f"[green]✓[/green] {task.name}: {len(examples)} examples")
+    _console.print(f"[dim]suite '{suite.name}' looks good[/dim]")
 
 
 @main.command(name="list")
