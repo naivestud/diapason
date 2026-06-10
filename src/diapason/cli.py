@@ -166,6 +166,50 @@ def list_components(config_dir: Path | None) -> None:
 
 
 @main.command()
+@click.argument("baseline", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.argument("candidate", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+def compare(baseline: Path, candidate: Path) -> None:
+    """Show score differences between two saved report JSON files.
+
+    BASELINE is the run to compare against; CANDIDATE is the new run. Tasks
+    are matched by name and each metric's delta (candidate minus baseline) is
+    shown with its sign.
+    """
+    base_result = _result_from_dict(json.loads(baseline.read_text(encoding="utf-8"))["results"])
+    cand_result = _result_from_dict(json.loads(candidate.read_text(encoding="utf-8"))["results"])
+
+    base_by_name = {task.name: task.scores for task in base_result.tasks}
+    cand_by_name = {task.name: task.scores for task in cand_result.tasks}
+    task_names = sorted(set(base_by_name) | set(cand_by_name))
+
+    table = Table(title=f"compare: {base_result.suite}")
+    table.add_column("task")
+    table.add_column("metric")
+    table.add_column("baseline", justify="right")
+    table.add_column("candidate", justify="right")
+    table.add_column("delta", justify="right")
+    for name in task_names:
+        base_scores = base_by_name.get(name, {})
+        cand_scores = cand_by_name.get(name, {})
+        for metric in sorted(set(base_scores) | set(cand_scores)):
+            base_value = base_scores.get(metric)
+            cand_value = cand_scores.get(metric)
+            delta = (
+                format_score(cand_value - base_value)
+                if base_value is not None and cand_value is not None
+                else "—"
+            )
+            table.add_row(
+                name,
+                metric,
+                format_score(base_value) if base_value is not None else "—",
+                format_score(cand_value) if cand_value is not None else "—",
+                delta,
+            )
+    _console.print(table)
+
+
+@main.command()
 @click.argument("results_json", type=click.Path(exists=True, dir_okay=False, path_type=Path))
 @click.option(
     "--output",

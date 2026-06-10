@@ -7,6 +7,8 @@ from pathlib import Path
 from click.testing import CliRunner
 
 from diapason.cli import main
+from diapason.report import ReportMetadata, write_json_report
+from diapason.runner import RunResult, TaskResult
 
 
 def _write_suite(tmp_path: Path) -> Path:
@@ -102,3 +104,40 @@ def test_check_fails_for_unparseable_manifest(tmp_path: Path) -> None:
     result = CliRunner().invoke(main, ["check", str(config)])
     assert result.exit_code != 0
     assert "missing a reference" in result.output
+
+
+def _write_report(tmp_path: Path, name: str, wer: float) -> Path:
+    result = RunResult(
+        suite="demo",
+        tasks=(TaskResult(name="t", type="asr", scores={"wer": wer}, num_examples=1),),
+    )
+    path = tmp_path / f"{name}.json"
+    write_json_report(result, path, ReportMetadata(suite="demo", generated_at="now"))
+    return path
+
+
+def test_compare_shows_delta(tmp_path: Path) -> None:
+    base = _write_report(tmp_path, "base", wer=0.30)
+    cand = _write_report(tmp_path, "cand", wer=0.25)
+    result = CliRunner().invoke(main, ["compare", str(base), str(cand)])
+    assert result.exit_code == 0
+    assert "0.3000" in result.output
+    assert "0.2500" in result.output
+    assert "-0.0500" in result.output
+
+
+def test_compare_handles_task_only_in_one_report(tmp_path: Path) -> None:
+    base = _write_report(tmp_path, "base", wer=0.30)
+    extra = RunResult(
+        suite="demo",
+        tasks=(
+            TaskResult(name="t", type="asr", scores={"wer": 0.2}, num_examples=1),
+            TaskResult(name="new", type="asr", scores={"wer": 0.1}, num_examples=1),
+        ),
+    )
+    cand = tmp_path / "cand.json"
+    write_json_report(extra, cand, ReportMetadata(suite="demo", generated_at="now"))
+    result = CliRunner().invoke(main, ["compare", str(base), str(cand)])
+    assert result.exit_code == 0
+    assert "new" in result.output
+    assert "—" in result.output
