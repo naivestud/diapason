@@ -146,8 +146,28 @@ def check(config_path: Path) -> None:
     default=None,
     help="Also list suite config files found in this directory.",
 )
-def list_components(config_dir: Path | None) -> None:
+@click.option(
+    "--format",
+    "fmt",
+    type=click.Choice(["table", "json"]),
+    default="table",
+    show_default=True,
+    help="Output format; json is meant for scripts.",
+)
+def list_components(config_dir: Path | None, fmt: str) -> None:
     """List registered adapters and metrics, and optionally discovered suites."""
+    suites = discover_suites(config_dir) if config_dir is not None else []
+
+    if fmt == "json":
+        payload: dict[str, Any] = {
+            "adapters": adapter_registry.names(),
+            "metrics": metric_registry.names(),
+        }
+        if config_dir is not None:
+            payload["suites"] = [path.name for path in suites]
+        click.echo(json.dumps(payload, indent=2))
+        return
+
     table = Table(title="registered components")
     table.add_column("kind")
     table.add_column("name")
@@ -157,12 +177,10 @@ def list_components(config_dir: Path | None) -> None:
         table.add_row("metric", name)
     _console.print(table)
 
-    if config_dir is not None:
-        suites = discover_suites(config_dir)
-        if suites:
-            _console.print(f"[bold]suites in {config_dir}[/bold]")
-            for path in suites:
-                _console.print(f"  {path.name}")
+    if config_dir is not None and suites:
+        _console.print(f"[bold]suites in {config_dir}[/bold]")
+        for path in suites:
+            _console.print(f"  {path.name}")
 
 
 @main.command()

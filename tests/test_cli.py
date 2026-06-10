@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from click.testing import CliRunner
@@ -38,6 +39,22 @@ def test_list_shows_registered_components() -> None:
     assert result.exit_code == 0
     assert "dummy" in result.output
     assert "wer" in result.output
+
+
+def test_list_json_format_is_machine_readable(tmp_path: Path) -> None:
+    (tmp_path / "demo.yaml").write_text("suite: d\ntasks: []\n", encoding="utf-8")
+    result = CliRunner().invoke(main, ["list", "--format", "json", "--config-dir", str(tmp_path)])
+    assert result.exit_code == 0
+    payload = json.loads(result.output)
+    assert "dummy" in payload["adapters"]
+    assert "wer" in payload["metrics"]
+    assert payload["suites"] == ["demo.yaml"]
+
+
+def test_list_json_without_config_dir_omits_suites() -> None:
+    result = CliRunner().invoke(main, ["list", "--format", "json"])
+    payload = json.loads(result.output)
+    assert "suites" not in payload
 
 
 def test_run_writes_reports(tmp_path: Path) -> None:
