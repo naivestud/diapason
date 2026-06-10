@@ -10,6 +10,7 @@ from diapason.config import (
     ConfigError,
     SuiteConfig,
     TaskConfig,
+    discover_suites,
     dump_suite,
     load_suite,
     validate_components,
@@ -188,6 +189,25 @@ def test_validate_components_rejects_unknown_metric() -> None:
     adapter_registry, metric_registry = _registries()
     with pytest.raises(ConfigError, match="task 't': unknown metric: 'nope'"):
         validate_components(suite, adapter_registry, metric_registry)
+
+
+def test_discover_suites_returns_yaml_files_sorted(tmp_path: Path) -> None:
+    (tmp_path / "b.yml").write_text("suite: b\ntasks: []\n", encoding="utf-8")
+    (tmp_path / "a.yaml").write_text("suite: a\ntasks: []\n", encoding="utf-8")
+    (tmp_path / "notes.txt").write_text("not a suite", encoding="utf-8")
+    names = [path.name for path in discover_suites(tmp_path)]
+    assert names == ["a.yaml", "b.yml"]
+
+
+def test_discover_suites_missing_directory_is_empty(tmp_path: Path) -> None:
+    assert discover_suites(tmp_path / "does-not-exist") == []
+
+
+def test_discover_suites_ignores_subdirectories(tmp_path: Path) -> None:
+    nested = tmp_path / "nested"
+    nested.mkdir()
+    (nested / "inner.yaml").write_text("suite: inner\ntasks: []\n", encoding="utf-8")
+    assert discover_suites(tmp_path) == []
 
 
 def test_dump_suite_round_trips(tmp_path: Path) -> None:
