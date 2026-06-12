@@ -1,9 +1,9 @@
 """Report generation for evaluation runs.
 
 A run produces structured results; this module turns them into artifacts people
-can read and compare: a JSON document for machines and a Markdown summary for
-humans. Both carry a little metadata so a report can be traced back to the
-exact suite definition and package version that produced it.
+can read and compare: a JSON document for machines, and Markdown and HTML
+summaries for humans. Both carry a little metadata so a report can be traced
+back to the exact suite definition and package version that produced it.
 """
 
 from __future__ import annotations
@@ -47,6 +47,50 @@ Config fingerprint: `{{ metadata.config_fingerprint }}`
 {% endfor %}
 {%- endfor %}
 """
+)
+
+
+_HTML_TEMPLATE = Template(
+    """\
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<title>diapason report: {{ metadata.suite }}</title>
+<style>
+body { font-family: sans-serif; margin: 2rem auto; max-width: 60rem; color: #222; }
+h1 { font-size: 1.4rem; } h2 { font-size: 1.1rem; margin-top: 2rem; }
+table { border-collapse: collapse; margin: 0.5rem 0 1.5rem; }
+th, td { border: 1px solid #ccc; padding: 0.3rem 0.7rem; text-align: left; }
+th { background: #f4f4f4; } td.num { text-align: right; }
+.meta { color: #666; font-size: 0.9rem; }
+</style>
+</head>
+<body>
+<h1>diapason report: {{ metadata.suite }}</h1>
+<p class="meta">Generated {{ metadata.generated_at }} by diapason {{ metadata.diapason_version }}.
+{% if metadata.config_fingerprint %}Config fingerprint: <code>{{ metadata.config_fingerprint }}</code>.{% endif %}
+</p>
+<h2>Summary</h2>
+<table>
+<tr><th>Task</th><th>Type</th><th>Examples</th><th>Errors</th><th>Scores</th></tr>
+{% for task in tasks -%}
+<tr><td>{{ task.name }}</td><td>{{ task.type }}</td><td class="num">{{ task.num_examples }}</td><td class="num">{{ task.num_errors }}</td><td>{{ task.summary }}</td></tr>
+{% endfor -%}
+</table>
+<h2>Task details</h2>
+{% for task in tasks -%}
+<h3>{{ task.name }}</h3>
+<table>
+<tr><th>Metric</th><th>Score</th></tr>
+{% for name, value in task.scores.items() -%}
+<tr><td>{{ name }}</td><td class="num">{{ value }}</td></tr>
+{% endfor -%}
+</table>
+{% endfor -%}
+</body>
+</html>
+""",
+    autoescape=True,
 )
 
 
@@ -95,16 +139,8 @@ def write_json_report(result: RunResult, path: str | Path, metadata: ReportMetad
     return output_path
 
 
-def render_markdown(result: RunResult, metadata: ReportMetadata) -> str:
-    """Render a run result as a Markdown report.
-
-    Args:
-        result: The run result to summarise.
-        metadata: Provenance shown at the top of the report.
-
-    Returns:
-        The rendered Markdown string.
-    """
+def _task_contexts(result: RunResult) -> list[dict[str, Any]]:
+    """Build the per-task template context shared by every report renderer."""
     tasks = []
     for task in result.tasks:
         scores = {name: format_score(value) for name, value in sorted(task.scores.items())}
@@ -119,7 +155,33 @@ def render_markdown(result: RunResult, metadata: ReportMetadata) -> str:
                 "summary": summary,
             }
         )
-    return cast(str, _MARKDOWN_TEMPLATE.render(metadata=metadata, tasks=tasks))
+    return tasks
+
+
+def render_markdown(result: RunResult, metadata: ReportMetadata) -> str:
+    """Render a run result as a Markdown report.
+
+    Args:
+        result: The run result to summarise.
+        metadata: Provenance shown at the top of the report.
+
+    Returns:
+        The rendered Markdown string.
+    """
+    return cast(str, _MARKDOWN_TEMPLATE.render(metadata=metadata, tasks=_task_contexts(result)))
+
+
+def render_html(result: RunResult, metadata: ReportMetadata) -> str:
+    """Render a run result as a self-contained HTML report.
+
+    Args:
+        result: The run result to summarise.
+        metadata: Provenance shown at the top of the report.
+
+    Returns:
+        The rendered HTML document as a string.
+    """
+    return cast(str, _HTML_TEMPLATE.render(metadata=metadata, tasks=_task_contexts(result)))
 
 
 def write_markdown_report(result: RunResult, path: str | Path, metadata: ReportMetadata) -> Path:
@@ -127,6 +189,14 @@ def write_markdown_report(result: RunResult, path: str | Path, metadata: ReportM
     output_path = Path(path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(render_markdown(result, metadata), encoding="utf-8")
+    return output_path
+
+
+def write_html_report(result: RunResult, path: str | Path, metadata: ReportMetadata) -> Path:
+    """Render and write an HTML report, creating parent directories."""
+    output_path = Path(path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(render_html(result, metadata), encoding="utf-8")
     return output_path
 
 

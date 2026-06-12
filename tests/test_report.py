@@ -10,8 +10,10 @@ from diapason.report import (
     ReportMetadata,
     build_metadata,
     config_fingerprint,
+    render_html,
     render_markdown,
     run_result_to_dict,
+    write_html_report,
     write_json_report,
     write_markdown_report,
 )
@@ -80,3 +82,24 @@ def test_build_metadata_populates_fields() -> None:
 def test_write_markdown_report(tmp_path: Path) -> None:
     out = write_markdown_report(_result(), tmp_path / "report.md", _metadata())
     assert out.read_text(encoding="utf-8").startswith("# diapason report: demo")
+
+
+def test_render_html_contains_summary() -> None:
+    html = render_html(_result(), _metadata())
+    assert "<title>diapason report: demo</title>" in html
+    assert "wer" in html
+    assert "0.2500" in html
+
+
+def test_render_html_escapes_task_names() -> None:
+    task = TaskResult(
+        name="<script>alert(1)</script>", type="asr", scores={"wer": 0.0}, num_examples=1
+    )
+    html = render_html(RunResult(suite="demo", tasks=(task,)), _metadata())
+    assert "<script>alert(1)</script>" not in html
+    assert "&lt;script&gt;" in html
+
+
+def test_write_html_report(tmp_path: Path) -> None:
+    out = write_html_report(_result(), tmp_path / "report.html", _metadata())
+    assert out.read_text(encoding="utf-8").startswith("<!DOCTYPE html>")
