@@ -27,6 +27,7 @@ from diapason.report import (
     build_metadata,
     format_score,
     render_markdown,
+    write_html_report,
     write_json_report,
     write_markdown_report,
 )
@@ -70,10 +71,10 @@ def _configure_logging(verbosity: int) -> None:
 @click.option(
     "--format",
     "fmt",
-    type=click.Choice(["json", "md", "both"]),
+    type=click.Choice(["json", "md", "html", "both", "all"]),
     default="both",
     show_default=True,
-    help="Which report formats to write.",
+    help="Which report formats to write; both = json + md, all adds html.",
 )
 @click.option("-v", "--verbose", count=True, help="Increase logging verbosity.")
 @click.option("-q", "--quiet", is_flag=True, help="Only print errors.")
@@ -106,10 +107,12 @@ def _write_reports(
     """
     destination = destination.resolve()
     destination.mkdir(parents=True, exist_ok=True)
-    if fmt in ("json", "both"):
+    if fmt in ("json", "both", "all"):
         write_json_report(result, destination / f"{suite_name}.json", metadata)
-    if fmt in ("md", "both"):
+    if fmt in ("md", "both", "all"):
         write_markdown_report(result, destination / f"{suite_name}.md", metadata)
+    if fmt in ("html", "all"):
+        write_html_report(result, destination / f"{suite_name}.html", metadata)
     return destination
 
 

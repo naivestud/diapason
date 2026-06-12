@@ -66,6 +66,30 @@ def test_run_writes_reports(tmp_path: Path) -> None:
     assert (output_dir / "demo.md").exists()
 
 
+def test_run_format_html_writes_only_html(tmp_path: Path) -> None:
+    config = _write_suite(tmp_path)
+    output_dir = tmp_path / "out"
+    result = CliRunner().invoke(
+        main, ["run", str(config), "--output-dir", str(output_dir), "--format", "html"]
+    )
+    assert result.exit_code == 0
+    assert (output_dir / "demo.html").exists()
+    assert not (output_dir / "demo.json").exists()
+    assert not (output_dir / "demo.md").exists()
+
+
+def test_run_format_all_writes_every_format(tmp_path: Path) -> None:
+    config = _write_suite(tmp_path)
+    output_dir = tmp_path / "out"
+    result = CliRunner().invoke(
+        main, ["run", str(config), "--output-dir", str(output_dir), "--format", "all"]
+    )
+    assert result.exit_code == 0
+    assert (output_dir / "demo.json").exists()
+    assert (output_dir / "demo.md").exists()
+    assert (output_dir / "demo.html").exists()
+
+
 def test_report_renders_from_saved_json(tmp_path: Path) -> None:
     config = _write_suite(tmp_path)
     output_dir = tmp_path / "out"
