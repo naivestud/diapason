@@ -27,6 +27,7 @@ from diapason.report import (
     build_metadata,
     format_score,
     render_markdown,
+    write_csv_report,
     write_html_report,
     write_json_report,
     write_markdown_report,
@@ -71,10 +72,10 @@ def _configure_logging(verbosity: int) -> None:
 @click.option(
     "--format",
     "fmt",
-    type=click.Choice(["json", "md", "html", "both", "all"]),
+    type=click.Choice(["json", "md", "html", "csv", "both", "all"]),
     default="both",
     show_default=True,
-    help="Which report formats to write; both = json + md, all adds html.",
+    help="Which report formats to write; both = json + md, all writes every format.",
 )
 @click.option("-v", "--verbose", count=True, help="Increase logging verbosity.")
 @click.option("-q", "--quiet", is_flag=True, help="Only print errors.")
@@ -113,6 +114,8 @@ def _write_reports(
         write_markdown_report(result, destination / f"{suite_name}.md", metadata)
     if fmt in ("html", "all"):
         write_html_report(result, destination / f"{suite_name}.html", metadata)
+    if fmt in ("csv", "all"):
+        write_csv_report(result, destination / f"{suite_name}.csv", metadata)
     return destination
 
 
