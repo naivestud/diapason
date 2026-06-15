@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import csv
 import json
 from pathlib import Path
 
@@ -13,6 +14,7 @@ from diapason.report import (
     render_html,
     render_markdown,
     run_result_to_dict,
+    write_csv_report,
     write_html_report,
     write_json_report,
     write_markdown_report,
@@ -103,3 +105,21 @@ def test_render_html_escapes_task_names() -> None:
 def test_write_html_report(tmp_path: Path) -> None:
     out = write_html_report(_result(), tmp_path / "report.html", _metadata())
     assert out.read_text(encoding="utf-8").startswith("<!DOCTYPE html>")
+
+
+def test_write_csv_report_has_one_row_per_metric(tmp_path: Path) -> None:
+    out = write_csv_report(_result(), tmp_path / "report.csv", _metadata())
+    with out.open(encoding="utf-8", newline="") as handle:
+        rows = list(csv.reader(handle))
+    assert rows[0] == ["suite", "task", "type", "metric", "score", "num_examples", "num_errors"]
+    # one row per metric (wer and cer) for the single task
+    assert len(rows) == 3
+    assert rows[1][3] == "cer"
+    assert rows[1][4] == "0.1000"
+
+
+def test_write_csv_report_empty_result(tmp_path: Path) -> None:
+    out = write_csv_report(RunResult(suite="empty"), tmp_path / "report.csv", _metadata())
+    with out.open(encoding="utf-8", newline="") as handle:
+        rows = list(csv.reader(handle))
+    assert len(rows) == 1  # header only

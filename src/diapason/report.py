@@ -8,6 +8,7 @@ back to the exact suite definition and package version that produced it.
 
 from __future__ import annotations
 
+import csv
 import hashlib
 import json
 from dataclasses import asdict, dataclass
@@ -197,6 +198,41 @@ def write_html_report(result: RunResult, path: str | Path, metadata: ReportMetad
     output_path = Path(path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(render_html(result, metadata), encoding="utf-8")
+    return output_path
+
+
+def write_csv_report(result: RunResult, path: str | Path, metadata: ReportMetadata) -> Path:
+    """Write the run result as a tidy CSV table, one row per task and metric.
+
+    CSV is meant for importing scores into spreadsheets and notebooks, so only
+    the suite name is kept from the metadata.
+
+    Args:
+        result: The run result to export.
+        path: Destination file; parent directories are created as needed.
+        metadata: Provenance; only the suite name is written.
+
+    Returns:
+        The path the CSV was written to.
+    """
+    output_path = Path(path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with output_path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(["suite", "task", "type", "metric", "score", "num_examples", "num_errors"])
+        for task in result.tasks:
+            for metric, value in sorted(task.scores.items()):
+                writer.writerow(
+                    [
+                        metadata.suite,
+                        task.name,
+                        task.type,
+                        metric,
+                        format_score(value),
+                        task.num_examples,
+                        task.num_errors,
+                    ]
+                )
     return output_path
 
 
