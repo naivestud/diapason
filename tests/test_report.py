@@ -19,7 +19,7 @@ from diapason.report import (
     write_json_report,
     write_markdown_report,
 )
-from diapason.runner import RunResult, TaskResult
+from diapason.runner import ExampleResult, RunResult, TaskResult
 
 
 def _result() -> RunResult:
@@ -37,6 +37,41 @@ def test_run_result_to_dict() -> None:
     data = run_result_to_dict(_result())
     assert data["suite"] == "demo"
     assert data["tasks"][0]["scores"]["wer"] == 0.25
+
+
+def _result_with_examples() -> RunResult:
+    task = TaskResult(
+        name="asr",
+        type="asr",
+        scores={"wer": 0.5},
+        num_examples=2,
+        num_errors=1,
+        example_results=(
+            ExampleResult(example_id="1", scores={"wer": 0.0}),
+            ExampleResult(example_id="2", error="empty reference"),
+        ),
+    )
+    return RunResult(suite="demo", tasks=(task,))
+
+
+def test_run_result_to_dict_omits_examples_by_default() -> None:
+    data = run_result_to_dict(_result_with_examples())
+    assert "examples" not in data["tasks"][0]
+
+
+def test_run_result_to_dict_includes_examples_on_request() -> None:
+    data = run_result_to_dict(_result_with_examples(), include_examples=True)
+    examples = data["tasks"][0]["examples"]
+    assert examples[0] == {"id": "1", "scores": {"wer": 0.0}, "error": None}
+    assert examples[1]["error"] == "empty reference"
+
+
+def test_write_json_report_include_examples(tmp_path: Path) -> None:
+    out = write_json_report(
+        _result_with_examples(), tmp_path / "r.json", _metadata(), include_examples=True
+    )
+    data = json.loads(out.read_text(encoding="utf-8"))
+    assert data["results"]["tasks"][0]["examples"][0]["id"] == "1"
 
 
 def test_write_json_report_round_trips(tmp_path: Path) -> None:

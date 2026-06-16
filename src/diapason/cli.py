@@ -79,7 +79,19 @@ def _configure_logging(verbosity: int) -> None:
 )
 @click.option("-v", "--verbose", count=True, help="Increase logging verbosity.")
 @click.option("-q", "--quiet", is_flag=True, help="Only print errors.")
-def run(config_path: Path, output_dir: Path | None, fmt: str, verbose: int, quiet: bool) -> None:
+@click.option(
+    "--include-examples",
+    is_flag=True,
+    help="Embed per-example scores and errors in the JSON report.",
+)
+def run(
+    config_path: Path,
+    output_dir: Path | None,
+    fmt: str,
+    verbose: int,
+    quiet: bool,
+    include_examples: bool,
+) -> None:
     """Evaluate the suite defined in CONFIG_PATH and write reports."""
     _configure_logging(-1 if quiet else verbose)
     suite = load_suite(config_path)
@@ -87,7 +99,7 @@ def run(config_path: Path, output_dir: Path | None, fmt: str, verbose: int, quie
     metadata = build_metadata(suite)
 
     destination = output_dir if output_dir is not None else Path.cwd() / "results"
-    destination = _write_reports(result, suite.name, destination, fmt, metadata)
+    destination = _write_reports(result, suite.name, destination, fmt, metadata, include_examples)
 
     if not quiet:
         _print_summary(result)
@@ -100,6 +112,7 @@ def _write_reports(
     destination: Path,
     fmt: str,
     metadata: ReportMetadata,
+    include_examples: bool = False,
 ) -> Path:
     """Write the requested report formats into ``destination``.
 
@@ -109,7 +122,9 @@ def _write_reports(
     destination = destination.resolve()
     destination.mkdir(parents=True, exist_ok=True)
     if fmt in ("json", "both", "all"):
-        write_json_report(result, destination / f"{suite_name}.json", metadata)
+        write_json_report(
+            result, destination / f"{suite_name}.json", metadata, include_examples=include_examples
+        )
     if fmt in ("md", "both", "all"):
         write_markdown_report(result, destination / f"{suite_name}.md", metadata)
     if fmt in ("html", "all"):

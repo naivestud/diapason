@@ -111,6 +111,38 @@ def test_report_renders_from_saved_json(tmp_path: Path) -> None:
     assert "diapason report: demo" in result.output
 
 
+def test_run_include_examples_embeds_per_example_scores(tmp_path: Path) -> None:
+    config = _write_suite(tmp_path)
+    output_dir = tmp_path / "out"
+    result = CliRunner().invoke(
+        main,
+        [
+            "run",
+            str(config),
+            "--output-dir",
+            str(output_dir),
+            "--format",
+            "json",
+            "--include-examples",
+        ],
+    )
+    assert result.exit_code == 0
+    data = json.loads((output_dir / "demo.json").read_text(encoding="utf-8"))
+    examples = data["results"]["tasks"][0]["examples"]
+    assert examples[0]["id"] == "1"
+    assert examples[0]["scores"]["wer"] == 0.0
+
+
+def test_run_omits_examples_by_default(tmp_path: Path) -> None:
+    config = _write_suite(tmp_path)
+    output_dir = tmp_path / "out"
+    CliRunner().invoke(
+        main, ["run", str(config), "--output-dir", str(output_dir), "--format", "json"]
+    )
+    data = json.loads((output_dir / "demo.json").read_text(encoding="utf-8"))
+    assert "examples" not in data["results"]["tasks"][0]
+
+
 def test_check_passes_for_valid_suite(tmp_path: Path) -> None:
     config = _write_suite(tmp_path)
     result = CliRunner().invoke(main, ["check", str(config)])

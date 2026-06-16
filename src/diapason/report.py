@@ -105,35 +105,51 @@ class ReportMetadata:
     config_fingerprint: str = ""
 
 
-def run_result_to_dict(result: RunResult) -> dict[str, Any]:
-    """Convert a run result into plain JSON-serializable data."""
-    return {
-        "suite": result.suite,
-        "tasks": [
-            {
-                "name": task.name,
-                "type": task.type,
-                "scores": dict(task.scores),
-                "num_examples": task.num_examples,
-                "num_errors": task.num_errors,
-            }
-            for task in result.tasks
-        ],
-    }
+def run_result_to_dict(result: RunResult, include_examples: bool = False) -> dict[str, Any]:
+    """Convert a run result into plain JSON-serializable data.
+
+    Args:
+        result: The run result to serialize.
+        include_examples: When true, also serialize each task's per-example
+            scores and errors so a report can be drilled into, not just
+            aggregated.
+    """
+    tasks = []
+    for task in result.tasks:
+        entry: dict[str, Any] = {
+            "name": task.name,
+            "type": task.type,
+            "scores": dict(task.scores),
+            "num_examples": task.num_examples,
+            "num_errors": task.num_errors,
+        }
+        if include_examples:
+            entry["examples"] = [
+                {"id": example.example_id, "scores": dict(example.scores), "error": example.error}
+                for example in task.example_results
+            ]
+        tasks.append(entry)
+    return {"suite": result.suite, "tasks": tasks}
 
 
-def write_json_report(result: RunResult, path: str | Path, metadata: ReportMetadata) -> Path:
+def write_json_report(
+    result: RunResult, path: str | Path, metadata: ReportMetadata, include_examples: bool = False
+) -> Path:
     """Write the run result and metadata as pretty-printed JSON.
 
     Args:
         result: The run result to serialize.
         path: Destination file; parent directories are created as needed.
         metadata: Provenance recorded next to the results.
+        include_examples: When true, embed per-example scores and errors.
 
     Returns:
         The path the report was written to.
     """
-    payload = {"metadata": asdict(metadata), "results": run_result_to_dict(result)}
+    payload = {
+        "metadata": asdict(metadata),
+        "results": run_result_to_dict(result, include_examples=include_examples),
+    }
     output_path = Path(path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
