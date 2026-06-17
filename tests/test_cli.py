@@ -143,6 +143,30 @@ def test_run_omits_examples_by_default(tmp_path: Path) -> None:
     assert "examples" not in data["results"]["tasks"][0]
 
 
+def test_run_dry_run_prints_plan_without_writing(tmp_path: Path) -> None:
+    config = _write_suite(tmp_path)
+    output_dir = tmp_path / "out"
+    result = CliRunner().invoke(
+        main, ["run", str(config), "--output-dir", str(output_dir), "--dry-run"]
+    )
+    assert result.exit_code == 0
+    assert "t [asr]: 1 examples" in result.output
+    assert "nothing was scored" in result.output
+    assert not output_dir.exists()
+
+
+def test_run_dry_run_fails_for_missing_manifest(tmp_path: Path) -> None:
+    config = tmp_path / "suite.yaml"
+    config.write_text(
+        "suite: demo\ntasks:\n  - name: t\n    type: asr\n"
+        "    manifest: missing.jsonl\n    metrics: [wer]\n",
+        encoding="utf-8",
+    )
+    result = CliRunner().invoke(main, ["run", str(config), "--dry-run"])
+    assert result.exit_code != 0
+    assert "manifest not found" in result.output
+
+
 def test_check_passes_for_valid_suite(tmp_path: Path) -> None:
     config = _write_suite(tmp_path)
     result = CliRunner().invoke(main, ["check", str(config)])

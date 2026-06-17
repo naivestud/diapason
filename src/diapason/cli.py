@@ -18,7 +18,13 @@ from rich.table import Table
 
 import diapason.adapters
 import diapason.metrics  # noqa: F401  (registers built-in metrics)
-from diapason.config import ConfigError, discover_suites, load_suite, validate_components
+from diapason.config import (
+    ConfigError,
+    SuiteConfig,
+    discover_suites,
+    load_suite,
+    validate_components,
+)
 from diapason.datasets.manifest import ManifestError, load_manifest
 from diapason.registry import adapters as adapter_registry
 from diapason.registry import metrics as metric_registry
@@ -84,6 +90,11 @@ def _configure_logging(verbosity: int) -> None:
     is_flag=True,
     help="Embed per-example scores and errors in the JSON report.",
 )
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Validate the suite and print the plan without scoring anything.",
+)
 def run(
     config_path: Path,
     output_dir: Path | None,
@@ -91,10 +102,14 @@ def run(
     verbose: int,
     quiet: bool,
     include_examples: bool,
+    dry_run: bool,
 ) -> None:
     """Evaluate the suite defined in CONFIG_PATH and write reports."""
     _configure_logging(-1 if quiet else verbose)
     suite = load_suite(config_path)
+    if dry_run:
+        _print_plan(suite, config_path.parent)
+        return
     result = run_suite(suite, base_dir=config_path.parent)
     metadata = build_metadata(suite)
 
@@ -104,6 +119,30 @@ def run(
     if not quiet:
         _print_summary(result)
         _console.print(f"[dim]reports written to {destination}[/dim]")
+
+
+def _print_plan(suite: SuiteConfig, base_dir: Path) -> None:
+    """Validate the suite and print what a full run would do, without scoring."""
+    try:
+        validate_components(suite, adapter_registry, metric_registry)
+    except ConfigError as exc:
+        raise click.ClickException(str(exc)) from exc
+    for task in suite.tasks:
+        manifest_path = resolve_manifest_path(task.manifest, base_dir)
+        if not manifest_path.is_file():
+            raise click.ClickException(f"task '{task.name}': manifest not found: {manifest_path}")
+        try:
+            examples = load_manifest(manifest_path, task.type)
+        except ManifestError as exc:
+            raise click.ClickException(f"task '{task.name}': {exc}") from exc
+        adapter = "none (stored predictions)" if task.type == "sed" else task.adapter
+        metrics = ", ".join(task.metrics) or "—"
+        _console.print(
+            f"  {task.name} [{task.type}]: {len(examples)} examples, "
+            f"adapter={adapter}, metrics={metrics}",
+            markup=False,
+        )
+    _console.print(f"[dim]dry run of suite '{suite.name}': nothing was scored[/dim]")
 
 
 def _write_reports(
