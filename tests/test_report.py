@@ -54,6 +54,11 @@ def _result_with_examples() -> RunResult:
     return RunResult(suite="demo", tasks=(task,))
 
 
+def test_task_records_duration(tmp_path: Path) -> None:
+    data = run_result_to_dict(_result())
+    assert "duration_seconds" in data["tasks"][0]
+
+
 def test_run_result_to_dict_omits_examples_by_default() -> None:
     data = run_result_to_dict(_result_with_examples())
     assert "examples" not in data["tasks"][0]

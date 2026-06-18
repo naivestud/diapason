@@ -122,6 +122,7 @@ def run_result_to_dict(result: RunResult, include_examples: bool = False) -> dic
             "scores": dict(task.scores),
             "num_examples": task.num_examples,
             "num_errors": task.num_errors,
+            "duration_seconds": task.duration_seconds,
         }
         if include_examples:
             entry["examples"] = [

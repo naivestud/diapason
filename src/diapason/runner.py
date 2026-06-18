@@ -7,6 +7,7 @@ returns structured results that the report writer can render.
 
 from __future__ import annotations
 
+import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -39,7 +40,17 @@ class ExampleResult:
 
 @dataclass(frozen=True)
 class TaskResult:
-    """Aggregated scores for one task."""
+    """Aggregated scores for one task.
+
+    Attributes:
+        name: The task's configured name.
+        type: One of the task families, e.g. ``asr``.
+        scores: Mapping of metric name to its aggregated value.
+        num_examples: How many examples the task evaluated.
+        num_errors: How many examples failed to score.
+        example_results: Per-example scores and errors, in manifest order.
+        duration_seconds: Wall-clock seconds spent scoring this task.
+    """
 
     name: str
     type: str
@@ -47,6 +58,7 @@ class TaskResult:
     num_examples: int = 0
     num_errors: int = 0
     example_results: tuple[ExampleResult, ...] = ()
+    duration_seconds: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -95,6 +107,7 @@ def run_task(task: TaskConfig, base_dir: Path | None = None) -> TaskResult:
     Returns:
         A :class:`TaskResult` with one aggregated score per configured metric.
     """
+    started = time.perf_counter()
     examples = load_manifest(resolve_manifest_path(task.manifest, base_dir), task.type)
 
     adapter = None if task.type == "sed" else _build_adapter(task)
@@ -122,6 +135,7 @@ def run_task(task: TaskConfig, base_dir: Path | None = None) -> TaskResult:
         num_examples=len(example_results),
         num_errors=num_errors,
         example_results=tuple(example_results),
+        duration_seconds=time.perf_counter() - started,
     )
 
 

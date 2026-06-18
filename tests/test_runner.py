@@ -35,6 +35,14 @@ def test_dummy_adapter_scores_perfectly(tmp_path: Path) -> None:
     assert result.num_errors == 0
 
 
+def test_task_records_duration(tmp_path: Path) -> None:
+    task = TaskConfig(
+        name="asr", type="asr", manifest=str(_asr_manifest(tmp_path)), metrics=("wer",)
+    )
+    result = run_task(task)
+    assert result.duration_seconds >= 0.0
+
+
 def test_corrupted_adapter_scores_worse(tmp_path: Path) -> None:
     task = TaskConfig(
         name="asr",

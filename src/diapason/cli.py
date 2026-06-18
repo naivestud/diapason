@@ -320,6 +320,7 @@ def _result_from_dict(payload: dict[str, Any]) -> RunResult:
                 scores={str(key): float(value) for key, value in task.get("scores", {}).items()},
                 num_examples=int(task.get("num_examples", 0)),
                 num_errors=int(task.get("num_errors", 0)),
+                duration_seconds=float(task.get("duration_seconds", 0.0)),
             )
         )
     return RunResult(suite=str(payload.get("suite", "")), tasks=tuple(tasks))
