@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from diapason.config import SuiteConfig, TaskConfig
-from diapason.runner import run_suite, run_task
+from diapason.runner import RunResult, TaskResult, run_suite, run_task
 
 
 def _asr_manifest(tmp_path: Path) -> Path:
@@ -81,6 +81,35 @@ def test_run_suite_collects_tasks(tmp_path: Path) -> None:
     assert run.suite == "demo"
     assert len(run.tasks) == 1
     assert run.tasks[0].scores["wer"] == 0.0
+
+
+def test_overall_scores_macro_average_tasks() -> None:
+    run = RunResult(
+        suite="demo",
+        tasks=(
+            TaskResult(name="small", type="asr", scores={"wer": 0.2}),
+            TaskResult(name="large", type="asr", scores={"wer": 0.4}),
+        ),
+    )
+    assert run.overall_scores == {"wer": pytest.approx(0.3)}
+
+
+def test_overall_scores_averages_only_tasks_reporting_metric() -> None:
+    run = RunResult(
+        suite="demo",
+        tasks=(
+            TaskResult(name="asr", type="asr", scores={"wer": 0.5, "cer": 0.3}),
+            TaskResult(name="qa", type="aqa", scores={"exact_match": 1.0}),
+        ),
+    )
+    overall = run.overall_scores
+    assert overall["wer"] == pytest.approx(0.5)
+    assert overall["cer"] == pytest.approx(0.3)
+    assert overall["exact_match"] == pytest.approx(1.0)
+
+
+def test_overall_scores_empty_run() -> None:
+    assert RunResult(suite="demo").overall_scores == {}
 
 
 def test_relative_manifest_resolved_against_base_dir(tmp_path: Path) -> None:

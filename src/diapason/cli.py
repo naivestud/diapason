@@ -349,6 +349,12 @@ def _print_summary(result: RunResult) -> None:
             f"{name}={format_score(value)}" for name, value in sorted(task.scores.items())
         )
         table.add_row(task.name, task.type, str(task.num_examples), str(task.num_errors), scores)
+    overall = result.overall_scores
+    if len(result.tasks) > 1 and overall:
+        summary = ", ".join(
+            f"{name}={format_score(value)}" for name, value in sorted(overall.items())
+        )
+        table.add_row("[bold]overall[/bold]", "", "", "", f"[bold]{summary}[/bold]")
     _console.print(table)
 
 

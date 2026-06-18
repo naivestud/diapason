@@ -18,7 +18,7 @@ import diapason.metrics  # noqa: F401  (registers built-in metrics)
 from diapason.adapters.base import ModelAdapter
 from diapason.config import SuiteConfig, TaskConfig
 from diapason.datasets.manifest import Example, load_manifest
-from diapason.metrics.aggregate import aggregate_examples
+from diapason.metrics.aggregate import aggregate_examples, mean
 from diapason.registry import adapters, metrics
 
 
@@ -67,6 +67,20 @@ class RunResult:
 
     suite: str
     tasks: tuple[TaskResult, ...] = ()
+
+    @property
+    def overall_scores(self) -> dict[str, float]:
+        """Macro-average each metric across the tasks that report it.
+
+        Every task contributes equally regardless of its size, matching the
+        macro averaging used between tasks. Metrics that only some tasks
+        report are averaged over those tasks alone.
+        """
+        by_metric: dict[str, list[float]] = {}
+        for task in self.tasks:
+            for metric, value in task.scores.items():
+                by_metric.setdefault(metric, []).append(value)
+        return {metric: mean(values) for metric, values in sorted(by_metric.items())}
 
 
 def run_suite(suite: SuiteConfig, base_dir: Path | None = None) -> RunResult:
