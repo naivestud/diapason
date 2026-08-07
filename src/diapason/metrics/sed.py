@@ -130,5 +130,9 @@ def event_based_f1(
     collar: float = 0.0,
     **options: object,
 ) -> float:
-    """Event-based F1 score with a collar tolerance. Higher is better."""
+    """Event-based F1 score with a collar tolerance.
+
+    Registered under the metric name ``event_f1``. Higher is better; ``1.0``
+    means every reference event was matched with no spurious predictions.
+    """
     return score_events(reference, prediction, collar=collar).f1
