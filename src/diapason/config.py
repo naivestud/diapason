@@ -70,7 +70,35 @@ def load_suite(path: str | Path) -> SuiteConfig:
     raw = yaml.safe_load(text)
     if not isinstance(raw, dict):
         raise ConfigError(f"suite definition must be a mapping, got {type(raw).__name__}")
-    return _build_suite(raw)
+    suite = _build_suite(raw)
+    validate_suite(suite)
+    return suite
+
+
+def validate_suite(suite: SuiteConfig) -> None:
+    """Check a suite definition for common mistakes.
+
+    Args:
+        suite: The suite to validate.
+
+    Raises:
+        ConfigError: If a task has an unknown type, an empty name or manifest,
+            or a name that collides with another task in the same suite.
+    """
+    seen: set[str] = set()
+    for task in suite.tasks:
+        if not task.name:
+            raise ConfigError("task name must not be empty")
+        if task.name in seen:
+            raise ConfigError(f"duplicate task name '{task.name}' in suite '{suite.name}'")
+        seen.add(task.name)
+        if task.type not in TASK_TYPES:
+            raise ConfigError(
+                f"task '{task.name}' has unknown type '{task.type}' "
+                f"(expected one of {', '.join(TASK_TYPES)})"
+            )
+        if not task.manifest:
+            raise ConfigError(f"task '{task.name}' is missing a manifest path")
 
 
 def _build_suite(raw: dict[str, Any]) -> SuiteConfig:
