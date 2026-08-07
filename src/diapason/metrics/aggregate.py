@@ -7,7 +7,7 @@ single number for a whole suite.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 
 
 def mean(values: Sequence[float]) -> float:
@@ -27,3 +27,19 @@ def aggregate_examples(values: Sequence[float]) -> float:
         The mean of ``values``.
     """
     return mean(values)
+
+
+def aggregate_tasks(task_scores: Mapping[str, float]) -> float:
+    """Collapse per-task scores into one suite score.
+
+    This is a macro average: every task contributes equally regardless of how
+    many examples it contains, which keeps large tasks from drowning out small
+    ones.
+
+    Args:
+        task_scores: Mapping of task name to its aggregated score.
+
+    Returns:
+        The mean of the task scores.
+    """
+    return mean(list(task_scores.values()))
