@@ -1,0 +1,11 @@
+suite: sed_smoke
+description: >-
+  Sound event detection suite scored from predictions stored in the manifest.
+  Demonstrates event-based F1 with a collar tolerance.
+tasks:
+  - name: household_events
+    type: sed
+    manifest: ../examples/data/sed.jsonl
+    metrics: [event_f1]
+    metric_options:
+      collar: 0.2
