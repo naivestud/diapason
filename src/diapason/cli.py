@@ -84,6 +84,8 @@ def run(config_path: Path, output_dir: Path | None, fmt: str, verbose: int, quie
     metadata = build_metadata(suite)
 
     destination = output_dir if output_dir is not None else Path.cwd() / "results"
+    destination = destination.resolve()
+    destination.mkdir(parents=True, exist_ok=True)
     if fmt in ("json", "both"):
         write_json_report(result, destination / f"{suite.name}.json", metadata)
     if fmt in ("md", "both"):
