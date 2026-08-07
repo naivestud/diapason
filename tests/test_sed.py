@@ -4,7 +4,13 @@ from __future__ import annotations
 
 import pytest
 
-from diapason.metrics.sed import Event, event_based_f1, parse_events, score_events
+from diapason.metrics.sed import (
+    Event,
+    event_based_f1,
+    parse_events,
+    psds_lite,
+    score_events,
+)
 
 
 def test_event_rejects_offset_before_onset() -> None:
@@ -62,3 +68,26 @@ def test_false_positive_lowers_precision() -> None:
     score = score_events(ref, pred)
     assert score.precision == 0.5
     assert score.recall == 1.0
+
+
+def test_psds_lite_sweeps_thresholds() -> None:
+    ref = [Event(0.0, 1.0, "dog")]
+    pred = [Event(0.0, 1.0, "dog", score=0.9)]
+    # With 10 steps the prediction survives thresholds 0.0..0.9 (F1 = 1) and is
+    # dropped at 1.0 (F1 = 0), giving 10/11.
+    assert psds_lite(ref, pred) == pytest.approx(10 / 11)
+
+
+def test_psds_lite_without_predictions_is_zero() -> None:
+    ref = [Event(0.0, 1.0, "dog")]
+    assert psds_lite(ref, []) == 0.0
+
+
+def test_psds_lite_rejects_nonpositive_thresholds() -> None:
+    with pytest.raises(ValueError, match="num_thresholds"):
+        psds_lite([], [], num_thresholds=0)
+
+
+def test_parse_events_reads_optional_score() -> None:
+    events = parse_events([{"onset": 0.0, "offset": 1.0, "label": "dog", "score": 0.7}])
+    assert events[0].score == 0.7
