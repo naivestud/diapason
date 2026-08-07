@@ -40,9 +40,9 @@ class TaskConfig:
     type: str
     manifest: str
     adapter: str = "dummy"
-    adapter_options: dict[str, object] = field(default_factory=dict)
+    adapter_options: dict[str, Any] = field(default_factory=dict)
     metrics: tuple[str, ...] = ()
-    metric_options: dict[str, object] = field(default_factory=dict)
+    metric_options: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

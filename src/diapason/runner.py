@@ -8,6 +8,16 @@ returns structured results that the report writer can render.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any
+
+import diapason.adapters  # noqa: F401  (registers built-in adapters)
+import diapason.metrics  # noqa: F401  (registers built-in metrics)
+from diapason.adapters.base import ModelAdapter
+from diapason.config import TaskConfig
+from diapason.datasets.manifest import Example, load_manifest
+from diapason.metrics.aggregate import aggregate_examples
+from diapason.registry import adapters, metrics
 
 
 @dataclass(frozen=True)
@@ -44,3 +54,63 @@ class RunResult:
 
     suite: str
     tasks: tuple[TaskResult, ...] = ()
+
+
+def run_task(task: TaskConfig, base_dir: Path | None = None) -> TaskResult:
+    """Evaluate a single task and aggregate its scores.
+
+    Args:
+        task: The task definition from a suite config.
+        base_dir: Directory the manifest path is resolved against when it is
+            relative. Useful when the suite config lives next to its data.
+
+    Returns:
+        A :class:`TaskResult` with one aggregated score per configured metric.
+    """
+    manifest_path = Path(task.manifest)
+    if base_dir is not None and not manifest_path.is_absolute():
+        manifest_path = base_dir / manifest_path
+    examples = load_manifest(manifest_path, task.type)
+
+    adapter = None if task.type == "sed" else _build_adapter(task)
+    metric_fns = {name: metrics.get(name) for name in task.metrics}
+
+    example_results: list[ExampleResult] = []
+    for example in examples:
+        reference, prediction = _reference_and_prediction(example, task, adapter)
+        scores = {
+            metric_name: fn(reference, prediction, **task.metric_options)
+            for metric_name, fn in metric_fns.items()
+        }
+        example_results.append(ExampleResult(example_id=example.id, scores=scores))
+
+    aggregated = {
+        metric_name: aggregate_examples([result.scores[metric_name] for result in example_results])
+        for metric_name in metric_fns
+    }
+    return TaskResult(
+        name=task.name,
+        type=task.type,
+        scores=aggregated,
+        num_examples=len(example_results),
+        num_errors=0,
+        example_results=tuple(example_results),
+    )
+
+
+def _build_adapter(task: TaskConfig) -> ModelAdapter:
+    """Instantiate the adapter named by the task with its options."""
+    factory = adapters.get(task.adapter)
+    return factory(**task.adapter_options)
+
+
+def _reference_and_prediction(
+    example: Example, task: TaskConfig, adapter: ModelAdapter | None
+) -> tuple[Any, Any]:
+    """Pull the reference and prediction for an example given the task type."""
+    if task.type == "sed":
+        return example.reference_events, example.prediction_events
+    prediction = example.prediction_text
+    if prediction is None and adapter is not None:
+        prediction = adapter.predict(example)
+    return example.reference_text, prediction
