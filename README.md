@@ -54,6 +54,9 @@ diapason list --config-dir configs # also show discovered suites
 diapason report results/demo.json  # re-render a saved report
 ```
 
+Runnable examples live in [`examples/`](examples/); each one is described in
+[`examples/README.md`](examples/README.md) and needs no model or audio files.
+
 ## Using the Python API
 
 ```python
