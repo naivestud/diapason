@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import string
 
-from diapason.metrics._align import Alignment, align_sequences
+from diapason.metrics._alignment import Alignment, align_sequences
 from diapason.registry import metrics
 
 _PUNCTUATION_TABLE = str.maketrans("", "", string.punctuation)
