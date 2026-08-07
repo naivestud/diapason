@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from typing import Any
 
 from diapason.registry import metrics
 
@@ -28,7 +29,7 @@ class Event:
             )
 
 
-def parse_events(raw: Sequence[Mapping[str, object]]) -> tuple[Event, ...]:
+def parse_events(raw: Sequence[Mapping[str, Any]]) -> tuple[Event, ...]:
     """Build :class:`Event` objects from manifest dictionaries.
 
     Args:
