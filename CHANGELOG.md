@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-08-08
+
+### Added
+
+- HTTP adapter that calls an OpenAI-compatible chat endpoint, with retries and
+  exponential backoff.
+- `psds_lite` metric approximating the polyphonic sound detection score.
+- `compare_adapters.py` example scoring one task under several adapter
+  configurations.
+
 ## [0.1.0] - 2026-08-08
 
 ### Added
