@@ -46,6 +46,7 @@ dev = [
   "ruff>=0.4",
   "mypy>=1.8",
   "pre-commit>=3.6",
+  "types-PyYAML>=6.0",
 ]
 
 [tool.hatch.version]
@@ -53,3 +54,7 @@ path = "src/diapason/version.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/diapason"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
