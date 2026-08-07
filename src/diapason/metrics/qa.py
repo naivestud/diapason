@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from collections import Counter
 
-from diapason.metrics.asr import normalize_text
+from diapason.metrics._text import normalize_text
 from diapason.registry import metrics
 
 
