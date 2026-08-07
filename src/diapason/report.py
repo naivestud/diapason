@@ -13,8 +13,38 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
+from jinja2 import Template
+
 from diapason.runner import RunResult
 from diapason.version import __version__
+
+_MARKDOWN_TEMPLATE = Template(
+    """\
+# diapason report: {{ metadata.suite }}
+
+_Generated {{ metadata.generated_at }} by diapason {{ metadata.diapason_version }}._
+{% if metadata.config_fingerprint %}
+Config fingerprint: `{{ metadata.config_fingerprint }}`
+{% endif %}
+## Summary
+
+| Task | Type | Examples | Errors | Scores |
+| --- | --- | ---: | ---: | --- |
+{% for task in tasks -%}
+| {{ task.name }} | {{ task.type }} | {{ task.num_examples }} | {{ task.num_errors }} | {{ task.summary }} |
+{% endfor %}
+## Task details
+{% for task in tasks %}
+### {{ task.name }}
+
+| Metric | Score |
+| --- | ---: |
+{% for name, value in task.scores.items() -%}
+| {{ name }} | {{ value }} |
+{% endfor %}
+{%- endfor %}
+"""
+)
 
 
 @dataclass(frozen=True)
@@ -62,3 +92,45 @@ def write_json_report(
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return output_path
+
+
+def render_markdown(result: RunResult, metadata: ReportMetadata) -> str:
+    """Render a run result as a Markdown report.
+
+    Args:
+        result: The run result to summarise.
+        metadata: Provenance shown at the top of the report.
+
+    Returns:
+        The rendered Markdown string.
+    """
+    tasks = []
+    for task in result.tasks:
+        scores = {name: _format_score(value) for name, value in sorted(task.scores.items())}
+        summary = ", ".join(f"{name}={value}" for name, value in scores.items()) or "—"
+        tasks.append(
+            {
+                "name": task.name,
+                "type": task.type,
+                "num_examples": task.num_examples,
+                "num_errors": task.num_errors,
+                "scores": scores,
+                "summary": summary,
+            }
+        )
+    return _MARKDOWN_TEMPLATE.render(metadata=metadata, tasks=tasks)
+
+
+def write_markdown_report(
+    result: RunResult, path: str | Path, metadata: ReportMetadata
+) -> Path:
+    """Render and write a Markdown report, creating parent directories."""
+    output_path = Path(path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(render_markdown(result, metadata), encoding="utf-8")
+    return output_path
+
+
+def _format_score(value: float) -> str:
+    """Format a metric value with four decimal places."""
+    return f"{value:.4f}"
