@@ -20,7 +20,8 @@ def test_wer_single_deletion() -> None:
 
 
 def test_wer_single_insertion() -> None:
-    assert wer("the cat", "the big cat") == pytest.approx(1 / 3)
+    # one insertion over a two-word reference
+    assert wer("the cat", "the big cat") == pytest.approx(0.5)
 
 
 def test_wer_can_exceed_one() -> None:
