@@ -8,13 +8,16 @@ exact suite definition and package version that produced it.
 
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import asdict, dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from jinja2 import Template
 
+from diapason.config import SuiteConfig
 from diapason.runner import RunResult
 from diapason.version import __version__
 
@@ -134,3 +137,29 @@ def write_markdown_report(
 def _format_score(value: float) -> str:
     """Format a metric value with four decimal places."""
     return f"{value:.4f}"
+
+
+def config_fingerprint(suite: SuiteConfig) -> str:
+    """Hash a suite definition so reports can be traced back to it.
+
+    Args:
+        suite: The suite whose definition should be fingerprinted.
+
+    Returns:
+        A short hex digest of the suite definition.
+    """
+    payload = json.dumps(
+        {"name": suite.name, "tasks": [asdict(task) for task in suite.tasks]},
+        sort_keys=True,
+        default=str,
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:12]
+
+
+def build_metadata(suite: SuiteConfig) -> ReportMetadata:
+    """Create provenance metadata for a run of ``suite`` at the current time."""
+    return ReportMetadata(
+        suite=suite.name,
+        generated_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        config_fingerprint=config_fingerprint(suite),
+    )
