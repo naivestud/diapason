@@ -19,7 +19,9 @@ def _tokens(text: str) -> list[str]:
 
 
 @metrics.register("exact_match")
-def exact_match(reference: str, prediction: str, *, normalize: bool = False, **options: object) -> float:
+def exact_match(
+    reference: str, prediction: str, *, normalize: bool = False, **options: object
+) -> float:
     """Return ``1.0`` when the prediction equals the reference, else ``0.0``.
 
     Args:
@@ -32,7 +34,9 @@ def exact_match(reference: str, prediction: str, *, normalize: bool = False, **o
 
 
 @metrics.register("token_f1")
-def token_f1(reference: str, prediction: str, *, normalize: bool = False, **options: object) -> float:
+def token_f1(
+    reference: str, prediction: str, *, normalize: bool = False, **options: object
+) -> float:
     """Token-level F1 between prediction and reference.
 
     Args:
