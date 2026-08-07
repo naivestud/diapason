@@ -134,4 +134,7 @@ def _reference_and_prediction(
     prediction = example.prediction_text
     if prediction is None and adapter is not None:
         prediction = adapter.predict(example)
-    return example.reference_text, prediction
+    reference: Any = example.reference_text
+    if example.reference_alternatives:
+        reference = [example.reference_text, *example.reference_alternatives]
+    return reference, prediction
