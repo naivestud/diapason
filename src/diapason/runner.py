@@ -14,7 +14,7 @@ from typing import Any
 import diapason.adapters  # noqa: F401  (registers built-in adapters)
 import diapason.metrics  # noqa: F401  (registers built-in metrics)
 from diapason.adapters.base import ModelAdapter
-from diapason.config import TaskConfig
+from diapason.config import SuiteConfig, TaskConfig
 from diapason.datasets.manifest import Example, load_manifest
 from diapason.metrics.aggregate import aggregate_examples
 from diapason.registry import adapters, metrics
@@ -54,6 +54,20 @@ class RunResult:
 
     suite: str
     tasks: tuple[TaskResult, ...] = ()
+
+
+def run_suite(suite: SuiteConfig, base_dir: Path | None = None) -> RunResult:
+    """Evaluate every task in a suite.
+
+    Args:
+        suite: The suite definition to run.
+        base_dir: Directory relative manifests paths are resolved against.
+
+    Returns:
+        A :class:`RunResult` holding one :class:`TaskResult` per task.
+    """
+    task_results = tuple(run_task(task, base_dir) for task in suite.tasks)
+    return RunResult(suite=suite.name, tasks=task_results)
 
 
 def run_task(task: TaskConfig, base_dir: Path | None = None) -> TaskResult:
