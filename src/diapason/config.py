@@ -9,9 +9,17 @@ that document; loading lives in :func:`load_suite`.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any
+
+import yaml
 
 #: Task families understood by the harness.
 TASK_TYPES = ("asr", "sed", "aqa")
+
+
+class ConfigError(ValueError):
+    """Raised when a suite definition is malformed or invalid."""
 
 
 @dataclass(frozen=True)
@@ -44,3 +52,43 @@ class SuiteConfig:
     name: str
     description: str = ""
     tasks: tuple[TaskConfig, ...] = ()
+
+
+def load_suite(path: str | Path) -> SuiteConfig:
+    """Load a suite definition from a YAML document.
+
+    Args:
+        path: Path to a ``*.yaml`` / ``*.yml`` suite definition.
+
+    Returns:
+        The parsed :class:`SuiteConfig`.
+
+    Raises:
+        ConfigError: If the document is not a mapping of suite fields.
+    """
+    text = Path(path).read_text(encoding="utf-8")
+    raw = yaml.safe_load(text)
+    if not isinstance(raw, dict):
+        raise ConfigError(f"suite definition must be a mapping, got {type(raw).__name__}")
+    return _build_suite(raw)
+
+
+def _build_suite(raw: dict[str, Any]) -> SuiteConfig:
+    tasks = tuple(_build_task(entry) for entry in raw.get("tasks", []))
+    return SuiteConfig(
+        name=str(raw.get("suite", "unnamed")),
+        description=str(raw.get("description", "")),
+        tasks=tasks,
+    )
+
+
+def _build_task(raw: dict[str, Any]) -> TaskConfig:
+    return TaskConfig(
+        name=str(raw["name"]),
+        type=str(raw["type"]),
+        manifest=str(raw["manifest"]),
+        adapter=str(raw.get("adapter", "dummy")),
+        adapter_options=dict(raw.get("adapter_options", {})),
+        metrics=tuple(raw.get("metrics", [])),
+        metric_options=dict(raw.get("metric_options", {})),
+    )
