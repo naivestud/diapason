@@ -9,6 +9,8 @@ not require installing a separate HTTP client.
 from __future__ import annotations
 
 import json
+import time
+import urllib.error
 import urllib.request
 from typing import TYPE_CHECKING, Any
 
@@ -112,12 +114,26 @@ class HttpAdapter(ModelAdapter):
         return extract_answer(response)
 
     def _post(self, payload: dict[str, Any]) -> dict[str, Any]:
-        """POST ``payload`` to the chat completions endpoint and decode the body."""
+        """POST ``payload`` to the chat completions endpoint with retries."""
         url = f"{self.base_url}/chat/completions"
         body = json.dumps(payload).encode("utf-8")
         headers = {"Content-Type": "application/json"}
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
-        request = urllib.request.Request(url, data=body, headers=headers, method="POST")
-        with urllib.request.urlopen(request, timeout=self.timeout) as response:
-            return json.loads(response.read().decode("utf-8"))
+        last_error: Exception | None = None
+        for attempt in range(self.max_retries):
+            try:
+                request = urllib.request.Request(url, data=body, headers=headers, method="POST")
+                with urllib.request.urlopen(request, timeout=self.timeout) as response:
+                    return json.loads(response.read().decode("utf-8"))
+            except urllib.error.URLError as exc:
+                last_error = exc
+                if attempt < self.max_retries - 1:
+                    time.sleep(self._backoff_delay(attempt))
+        attempts = self.max_retries
+        raise RuntimeError(f"chat completions request failed after {attempts} attempts") from last_error
+
+    @staticmethod
+    def _backoff_delay(attempt: int) -> float:
+        """Exponential backoff delay in seconds for a zero-based attempt."""
+        return 2.0**attempt
