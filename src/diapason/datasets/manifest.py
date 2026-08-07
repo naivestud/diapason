@@ -17,6 +17,9 @@ from typing import Any
 
 from diapason.metrics.sed import Event, parse_events
 
+#: Task families that manifests can be loaded for.
+_TASK_TYPES = ("asr", "sed", "aqa")
+
 
 class ManifestError(ValueError):
     """Raised when a manifest cannot be read or is malformed."""
@@ -48,8 +51,11 @@ def load_manifest(path: str | Path, task_type: str) -> list[Example]:
         The parsed examples, in file order.
 
     Raises:
-        ManifestError: If the file is empty or a line is not valid JSON.
+        ManifestError: If the file is empty, a line is not valid JSON, or an
+            example is missing a field its task type requires.
     """
+    if task_type not in _TASK_TYPES:
+        raise ManifestError(f"unknown task type '{task_type}'")
     examples: list[Example] = []
     text = Path(path).read_text(encoding="utf-8")
     for line_number, line in enumerate(text.splitlines(), start=1):
@@ -62,10 +68,24 @@ def load_manifest(path: str | Path, task_type: str) -> list[Example]:
             raise ManifestError(f"{path}:{line_number}: invalid JSON ({exc})") from exc
         if not isinstance(row, Mapping):
             raise ManifestError(f"{path}:{line_number}: expected a JSON object")
-        examples.append(_parse_row(dict(row), task_type))
+        example = _parse_row(dict(row), task_type)
+        _validate(example, task_type, line_number)
+        examples.append(example)
     if not examples:
         raise ManifestError(f"manifest {path} contains no examples")
     return examples
+
+
+def _validate(example: Example, task_type: str, line_number: int) -> None:
+    """Check that an example carries the fields its task type needs."""
+    where = f"line {line_number} (example '{example.id}')"
+    if task_type == "sed":
+        if example.reference_events is None:
+            raise ManifestError(f"{where} is missing SED reference events")
+    elif example.reference_text is None:
+        raise ManifestError(f"{where} is missing a reference")
+    if task_type == "aqa" and example.prompt is None:
+        raise ManifestError(f"{where} is missing a question")
 
 
 def _parse_row(row: dict[str, Any], task_type: str) -> Example:
