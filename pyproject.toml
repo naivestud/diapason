@@ -49,6 +49,9 @@ dev = [
   "types-PyYAML>=6.0",
 ]
 
+[project.scripts]
+diapason = "diapason.cli:main"
+
 [tool.hatch.version]
 path = "src/diapason/version.py"
 
