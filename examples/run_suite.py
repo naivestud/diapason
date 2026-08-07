@@ -23,7 +23,7 @@ def main() -> None:
     for config_path in sorted(configs_dir.glob("*.yaml")):
         suite = load_suite(config_path)
         result = run_suite(suite, base_dir=config_path.parent)
-        metadata = build_metadata(suite))
+        metadata = build_metadata(suite)
         write_json_report(result, output_dir / f"{suite.name}.json", metadata)
         write_markdown_report(result, output_dir / f"{suite.name}.md", metadata)
         print(f"evaluated {suite.name}: {len(suite.tasks)} task(s)")
