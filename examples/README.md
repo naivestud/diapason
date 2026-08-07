@@ -9,6 +9,7 @@ in their manifests.
 | --- | --- |
 | `run_asr.py` | Loading a suite, running one ASR task, printing scores |
 | `run_suite.py` | Running every bundled smoke suite and writing reports |
+| `compare_adapters.py` | Scoring the same task with two adapter configurations |
 
 The `data/` directory holds the JSONL manifests the bundled configs in
 `../configs` point at. Each line is one evaluation example; see
