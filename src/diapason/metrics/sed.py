@@ -16,11 +16,16 @@ from diapason.registry import metrics
 
 @dataclass(frozen=True)
 class Event:
-    """A labelled sound event spanning ``[onset, offset]`` seconds."""
+    """A labelled sound event spanning ``[onset, offset]`` seconds.
+
+    Predicted events may carry a confidence ``score``; reference events leave
+    it as ``None``.
+    """
 
     onset: float
     offset: float
     label: str
+    score: float | None = None
 
     def __post_init__(self) -> None:
         if self.offset < self.onset:
@@ -49,7 +54,9 @@ def parse_events(raw: Sequence[Mapping[str, Any]]) -> tuple[Event, ...]:
             label = str(item["label"])
         except KeyError as exc:
             raise ValueError(f"event {index} is missing key {exc}") from exc
-        events.append(Event(onset=onset, offset=offset, label=label))
+        raw_score = item.get("score")
+        score = None if raw_score is None else float(raw_score)
+        events.append(Event(onset=onset, offset=offset, label=label, score=score))
     return tuple(events)
 
 
@@ -136,3 +143,42 @@ def event_based_f1(
     means every reference event was matched with no spurious predictions.
     """
     return score_events(reference, prediction, collar=collar).f1
+
+
+@metrics.register("psds_lite")
+def psds_lite(
+    reference: Sequence[Event],
+    prediction: Sequence[Event],
+    *,
+    collar: float = 0.0,
+    num_thresholds: int = 10,
+    **options: object,
+) -> float:
+    """Approximate PSDS by averaging event F1 across detection thresholds.
+
+    Predicted events with a higher confidence ``score`` survive higher
+    thresholds, so sweeping the threshold traces out a precision/recall curve
+    and averaging its F1 approximates the area-based PSDS. Predictions without
+    a score are treated as maximally confident.
+
+    Args:
+        reference: Ground-truth events.
+        prediction: Predicted events, ideally with confidence scores.
+        collar: Tolerance in seconds applied to onset and offset.
+        num_thresholds: Number of threshold steps between 0 and 1.
+
+    Returns:
+        The mean event F1 across the swept thresholds.
+    """
+    if num_thresholds <= 0:
+        raise ValueError("num_thresholds must be positive")
+    f1_scores = []
+    for step in range(num_thresholds + 1):
+        threshold = step / num_thresholds
+        kept = [
+            event
+            for event in prediction
+            if (event.score if event.score is not None else 1.0) >= threshold
+        ]
+        f1_scores.append(score_events(reference, kept, collar=collar).f1)
+    return sum(f1_scores) / len(f1_scores)
