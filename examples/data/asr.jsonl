@@ -1,0 +1,5 @@
+{"id": "asr-001", "audio": "audio/asr-001.wav", "reference": "the quick brown fox jumps over the lazy dog"}
+{"id": "asr-002", "audio": "audio/asr-002.wav", "reference": "she sells seashells by the seashore"}
+{"id": "asr-003", "audio": "audio/asr-003.wav", "reference": "how much wood would a woodchuck chuck"}
+{"id": "asr-004", "audio": "audio/asr-004.wav", "reference": "peter piper picked a peck of pickled peppers"}
+{"id": "asr-005", "audio": "audio/asr-005.wav", "reference": "a stitch in time saves nine"}

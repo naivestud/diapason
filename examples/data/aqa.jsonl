@@ -1,0 +1,4 @@
+{"id": "aqa-001", "audio": "audio/aqa-001.wav", "question": "What animal can be heard?", "reference": "a dog", "prediction": "a dog"}
+{"id": "aqa-002", "audio": "audio/aqa-002.wav", "question": "How many speakers are there?", "reference": "two", "prediction": "two speakers"}
+{"id": "aqa-003", "audio": "audio/aqa-003.wav", "question": "What is the background sound?", "reference": "rain", "prediction": "heavy rain"}
+{"id": "aqa-004", "audio": "audio/aqa-004.wav", "question": "Is the speaker male or female?", "reference": "female", "prediction": "male"}
